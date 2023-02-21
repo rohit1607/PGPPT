@@ -168,6 +168,135 @@ class create_waypoint_dataset(Dataset):
         return  timesteps, states, traj_mask, target_state, env_coef_seq, traj_len
 
 
+class create_action_dataset(Dataset):
+    def __init__(self, dataset, 
+                        idx_set,
+                        env,        #env object
+                        context_len, 
+                        norm_params_4_val=None):
+        """
+        Computes Dones, Normalizes trajs, masks trajs based on their lengths wrt context_len
+        dataset: list of experience dictionaries 
+        context_len: context lenght of the transformer
+        env_info: (String) env name 
+
+        Note: Written for a particular env field
+        """
+
+        self.env = env
+        self.context_len = context_len
+        self.n_trajs = len(dataset)
+        self.dataset = [traj for traj in dataset if traj['done']]
+        print(f"\n Making dataset out of successful trajectories. \n \
+                No. of successful trajs / total trajs = {len(self.dataset)} / {self.n_trajs } \n")
+        self.Yi = env.Yi    #Yi are env coeffs
+        
+        # store actions across realizations
+        # TODO: try action normalization
+
+        # actions = []
+        # for traj in self.dataset:
+        #     actions.append(torch.from_numpy(traj['actions']))
+        # print(f" actions[0].shape:  {actions[0].shape}")
+
+        # states = [] 
+        # for traj in self.dataset:
+        #     states.append(traj['states'])
+        # print(f" states[0].shape:  {states[0].shape}")
+        # # used for input normalization
+        # states = np.concatenate(states, axis=0)
+        # self.state_mean, self.state_std = np.mean(states, axis=0), np.std(states, axis=0) + 1e-6
+        # # normalize states
+        # if norm_params_4_val == None:
+        #     for traj in self.dataset:
+        #         traj['states'] = (traj['states'] - self.state_mean) / self.state_std        
+        # else:
+        #     tr_state_mean,  tr_state_std =  norm_params_4_val
+        #     for traj in self.dataset:
+        #         traj['states'] = (traj['states'] - tr_state_mean) / tr_state_std
+
+    def get_state_stats(self):
+        return (self.state_mean, self.state_std)
+
+
+    # TODO: Verify it returns the no. of trajectories
+    def __len__(self):
+        return len(self.dataset)
+        
+
+    def __getitem__(self, idx):
+        traj = self.dataset[idx]
+        traj_len = traj['states'].shape[0]
+        env_coef_seq = self.Yi[:self.context_len, idx, :] # Yi.shape = (nT, nrzns, nmodes)
+        # print(f"****** VERIFY: traj_len = {traj_len}")
+        padding_len = None
+        if traj_len >= self.context_len:
+            # TODO: correcly write if condition
+            # sample random index to slice trajectory
+            si = random.randint(0, traj_len - self.context_len)
+
+            # states = torch.from_numpy(traj['states'][si : si + self.context_len])
+            # # NOTE: add extra padde
+            # states = torch.cat([states, torch.zeros(1,states.shape[1:])], dim=0)
+            try:
+                actions = torch.from_numpy(traj['actions'][si : si + self.context_len + 1])
+            except:
+                actions = torch.cat([actions,
+                                    torch.zeros(([1] + list(actions.shape[1:])),
+                                    dtype=actions.dtype)],
+                                    dim=0)
+            timesteps = torch.arange(start=si, end=si+self.context_len, step=1)
+
+            # # all ones since no padding
+            traj_mask = torch.zeros(self.context_len, dtype=torch.long).to(torch.bool)
+            # target_state = torch.from_numpy(traj['target_pos'])
+            print(f" entering if condition - should not happen for basic cases")
+            print(f"actions.shape = {actions.shape}")
+            sys.exit()
+        else:
+            padding_len = self.context_len - traj_len 
+
+            # padding with zeros
+            actions = torch.from_numpy(traj['actions'])
+            # print(f"+++ in cwg: states.shape = {states.shape}")
+
+            # NOTE: paddding_len + 1 for tgt i/o offset for translation tasks
+            actions = torch.cat([actions,
+                                torch.zeros(([padding_len+1] + list(actions.shape[1:])),
+                                dtype=actions.dtype)],
+                               dim=0)
+            # print(f" in cwg: states.shape = {states.shape}")
+
+            # sys.exit()
+            # actions = torch.from_numpy(traj['actions'])
+            # actions = torch.cat([actions,
+            #                     torch.zeros(([padding_len] + list(actions.shape[1:])),
+            #                     dtype=actions.dtype)],
+            #                    dim=0)
+
+            # returns_to_go = torch.from_numpy(traj['returns_to_go'])
+            # returns_to_go = torch.cat([returns_to_go,
+            #                     torch.zeros(([padding_len] + list(returns_to_go.shape[1:])),
+            #                     dtype=returns_to_go.dtype)],
+            #                    dim=0)
+
+            timesteps = torch.arange(start=0, end=self.context_len, step=1)
+
+            traj_mask = torch.cat([torch.zeros(traj_len, dtype=torch.long),
+                                   torch.ones(padding_len, dtype=torch.long)],
+                                  dim=0).type(torch.bool)
+        try:
+            target_state = torch.from_numpy(traj['target_pos'])
+        except:
+            target_state = torch.from_numpy(self.env.target_pos)
+
+        # print(f"### verify: target_state = {target_state}")
+        # sys.exit()
+        dummy_t = float(int(0.8*self.context_len)) # time stamp for target state.
+        target_state = np.insert(target_state,0,dummy_t,axis=0)
+        # print(f"### verify: target_state = {target_state}")
+        return  timesteps, actions, traj_mask, target_state, env_coef_seq, traj_len
+
 
 """
 https://pytorch.org/tutorials/beginner/translation_transformer.html
@@ -259,6 +388,7 @@ def visualize_output(preds_list,
 
                         ):
  
+    print(f"path_lens = {path_lens}")
     path = join(ROOT, "tmp/last_exp_figs/")
     fname = path + "pred_traj_epoch_" + str(iter_i) + ".png" 
     fig = plt.figure()
@@ -289,6 +419,8 @@ def visualize_output(preds_list,
     for idx,traj in enumerate(preds_list):
         if idx in traj_idx:
             states = preds_list[idx]
+            print(f"states.shape = {states.shape}\n ")
+            # print(f"states = {states}")
             t_done = 50 #TODO: change 
             # print(f"******* Verify: visualize_op: states.shape= {states.shape}")
             if at_time != None:
@@ -308,6 +440,7 @@ def visualize_output(preds_list,
             # shape: (eval_batch_size, max_test_ep_len, state_dim)
             if color_by_time:
                 plt.plot(states[0,:t_done+1,1], states[0,:t_done+1,2], color=scalarMap.to_rgba(t_done), alpha=0.2)
+                plt.plot
             else:
                 plt.plot(states[0,:t_done+1,1], states[0,:t_done+1,2])
 
