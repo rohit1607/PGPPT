@@ -7,7 +7,7 @@ from src_utils import create_waypoint_dataset, create_action_dataset, get_data_s
 from utils import read_cfg_file
 # from std_models import Seq2SeqTransformer
 from custom_models import mySeq2SeqTransformer_v1
-# from custom_models import LSTMModel
+from custom_models import TransRNN
 
 import gym
 import gym_examples
@@ -25,6 +25,57 @@ import sys
 
 wandb.login()
 
+def rnn_train_epoch(model, optimizer, tr_set, cfg):
+    model.train()
+    losses = 0
+    train_dataloader = DataLoader(tr_set, batch_size=cfg.batch_size)
+    for timesteps, states, traj_mask, target_state, env_coef_seq, traj_len in train_dataloader:
+        src = env_coef_seq.to(cfg.device)
+        tgt = states.to(cfg.device)
+        tgt_input = tgt[:, :-1, :]
+        logits = model(src, tgt_input)
+        optimizer.zero_grad()
+        tgt_out = tgt[:,1:,:]
+        loss = F.mse_loss(logits.reshape(-1, logits.shape[-1]), tgt_out.reshape(-1, tgt_out.shape[-1]))
+        loss.backward()
+        torch.nn.utils.clip_grad_norm_(model.parameters(), 0.25)
+        optimizer.step()
+        losses += loss.item()
+        wandb.log({"loss_vs_batch": loss,})
+    
+    return losses / len(train_dataloader)
+
+def rnn_evaluate(model, val_set, cfg):
+    model.eval()
+    losses = 0
+    val_dataloader = DataLoader(val_set, batch_size=cfg.batch_size)
+
+    for timesteps, states, traj_mask, target_state, env_coef_seq, traj_len in val_dataloader:
+        src = env_coef_seq.to(cfg.device)
+        tgt = states.to(cfg.device)
+        tgt_input = tgt[:, :-1, :]
+        logits = model(src, tgt_input)
+        tgt_out = tgt[:, 1:, :]
+        loss = F.mse_loss(logits.reshape(-1, logits.shape[-1]), tgt_out.reshape(-1,tgt_out.shape[-1]))
+        losses += loss.item()
+
+    return losses / len(val_dataloader)
+
+def rnn_translate(model, test_set, tr_set_stats, cfg):
+    test_dataloader = DataLoader(test_batch_size=cfg.batch_size)
+    final_pred_list = []
+    final_path_lens = []
+    for timesteps, states, traj_mask, target_state, env_coef_seq, traj_len in test_dataloader:
+        src = env_coef_seq.to(cfg.device)
+        tgt = states.to(cfg.device)
+        tgt_input = tgt[:, :-1, :]
+        final_pred, path_length = model.translate(src,tgt_input, tr_set_stats, target_state)
+        final_pred = final_pred.reshape(1, final_pred.shape[-1])
+        pred_list = [final_pred[i,:] for i in range(path_length)]
+        final_pred_list.append(pred_list)
+        final_path_lens.append(path_length)
+
+    return final_pred_list, final_path_lens
 
 def train_epoch(model, optimizer, tr_set, cfg, args):
     model.train()
@@ -297,6 +348,8 @@ def train_model(args, cfg_name):
                                  n_heads, src_vec_dim, tgt_vec_dim, 
                                  dim_feedforward=None,     # TODO: add dim_ffn to cfg
                                  max_len=context_len).to(cfg.device)
+
+    rnn = 
    
     # optimizer = torch.optim.Adam(transformer.parameters(), lr=0.00001, betas=(0.9, 0.98), eps=1e-9)
     optimizer = torch.optim.AdamW(

@@ -126,3 +126,86 @@ class mySeq2SeqTransformer_v1(nn.Module):
         return self.transformer.decoder(self.positional_encoding(
                           self.tgt_tok_emb(tgt), timesteps), memory,
                           tgt_mask)
+
+class EncoderRNN(nn.Module):
+    def __init__(self, input_size, hidden_size):
+        super(EncoderRNN, self).__init__()
+        self.hidden_size = hidden_size
+        self.embedding = nn.Linear(input_size, hidden_size)
+        self.gru = nn.GRU(hidden_size, hidden_size)
+
+    def forward(self, input, hidden):
+        embedded = self.embedding(input)
+        output = embedded
+        output, hidden = self.gru(output, hidden)
+        return output, hidden
+
+    def initHidden(self):
+        return torch.zeros(1, 1, self.hidden_size)
+    
+class DecoderRNN(nn.Module):
+    def __init__(self, hidden_size, output_size):
+        super(DecoderRNN, self).__init__()
+        self.hidden_size = hidden_size
+        self.embedding = nn.Linear(output_size, hidden_size)
+        self.gru = nn.GRU(hidden_size, hidden_size)
+        self.out = nn.Linear(hidden_size, output_size)
+
+    def forward(self, input, hidden):
+        output = self.embedding(input)
+        output = F.relu(output)
+        output, hidden = self.gru(output, hidden)
+        return output, hidden
+
+    def initHidden(self):
+        return torch.zeros(1, 1, self.hidden_size)
+
+class TransRNN(nn.Module):
+    def __init__(self,input_size, hidden_size, output_size, device, context_len):
+        self.encoder = EncoderRNN(input_size,hidden_size,device)
+        self.decoder = DecoderRNN(hidden_size,output_size,device)
+        self.context_len = context_len
+        self.hidden_size = hidden_size
+        self.output_size = output_size
+
+    def forward(self, src, tgt): 
+        encoder_hidden = self.encoder.initHidden()
+        encoder_outputs = torch.zeros(src.shape[0], 1, self.hidden_size)
+        decoder_output = torch.zeros(src.shape[0], self.context_len, self.output_size)
+        for ei in range(self.context_len):
+            encoder_outputs[:,0,:], encoder_hidden = self.encoder(src[:,ei,:], encoder_hidden)
+        
+        decoder_hidden = encoder_outputs
+
+        for di in range(self.context_len):
+            decoder_output[:,di,:], decoder_hidden = self.decoder(tgt[:,di,:], decoder_hidden)
+        
+        return decoder_output
+    
+    def translate(self,src,tgt,tr_set_stats, target_state):
+        self.eval()
+
+        with torch.no_grad():
+            encoder_hidden = self.encoder.initHidden()
+            encoder_outputs = torch.zeros(1, 1, self.hidden_size)
+            decoder_output = torch.zeros(1, self.context_len, self.output_size)
+
+            for ei in range(self.context_len):
+                encoder_outputs[:,0,:], encoder_hidden = self.encoder(src[:,ei,:], encoder_hidden)
+        
+            decoder_hidden = encoder_outputs
+            decoder_input = tgt[:,0,:]
+            path_length = 0
+
+            for di in range(self.context_len):
+                decoder_output[:,di,:], decoder_hidden = self.decoder(decoder_input, decoder_hidden)
+                decoder_input = decoder_output[:,di,:]
+                mean, std = tr_set_stats
+                txy = decoder_input.reshape(decoder_input.shape[-1])
+                txy = txy * std + mean
+                if torch.norm((txy[1:]-target_state[0,1:])) <= 2:
+                    break
+
+                path_length += 1
+
+            return decoder_output, path_length
