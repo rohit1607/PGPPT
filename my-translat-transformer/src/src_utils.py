@@ -292,10 +292,10 @@ class create_action_dataset(Dataset):
 
         # print(f"### verify: target_state = {target_state}")
         # sys.exit()
-        dummy_t = float(int(0.8*self.context_len)) # time stamp for target state.
-        target_state = np.insert(target_state,0,dummy_t,axis=0)
+        dummy_t = float(int(traj_len)) # time stamp for target state.
+        target_state = np.insert(target_state,0,dummy_t,axis=1)
         # print(f"### verify: target_state = {target_state}")
-        return  timesteps, actions, traj_mask, target_state, env_coef_seq, traj_len
+        return  timesteps, actions, traj_mask, target_state, env_coef_seq, traj_len, idx
 
 
 """
@@ -419,7 +419,7 @@ def visualize_output(preds_list,
     for idx,traj in enumerate(preds_list):
         if idx in traj_idx:
             states = preds_list[idx]
-            print(f"states.shape = {states.shape}\n ")
+            # print(f"states.shape = {states.shape}\n ")
             # print(f"states = {states}")
             t_done = 50 #TODO: change 
             # print(f"******* Verify: visualize_op: states.shape= {states.shape}")

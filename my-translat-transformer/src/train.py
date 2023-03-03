@@ -83,7 +83,7 @@ def train_epoch(model, optimizer, tr_set, cfg, args):
     train_dataloader = DataLoader(tr_set, batch_size=cfg.batch_size)
 
     # for env_coef_seq, tgt in train_dataloader:
-    for timesteps, tgt, traj_mask, target_state, env_coef_seq, traj_len in train_dataloader:
+    for timesteps, tgt, traj_mask, target_state, env_coef_seq, traj_len, idx in train_dataloader:
         # print(f"### verify env_coef_seq: {env_coef_seq.shape}, \ntgt: {tgt.shape}, {traj_mask.shape}")
         timesteps = timesteps.to(cfg.device)
         src = env_coef_seq.to(cfg.device)
@@ -98,13 +98,20 @@ def train_epoch(model, optimizer, tr_set, cfg, args):
         # print(f" logits.shape = {logits.shape}")
         # print(f" logits,isnan = {torch.isnan(logits)}")
 
-        optimizer.zero_grad()
 
         tgt_out = tgt[:, 1:, :]
+
+        # only consider non padded elements
+        logits =  logits.view(-1,1)[(~tgt_padding_mask).view(-1,)]
+        tgt_out = tgt_out.reshape(-1,1)[(~tgt_padding_mask).view(-1,)]
+
         # loss = loss_fn(logits.reshape(-1, logits.shape[-1]), tgt_out.reshape(-1))
-        loss = F.mse_loss(logits.reshape(-1, logits.shape[-1]), tgt_out.reshape(-1,tgt_out.shape[-1]))
+
+        loss = F.mse_loss(logits, tgt_out)
         # print("model predictions:", logits.reshape(-1, logits.shape[-1]),)
         # print("tgt_out:", tgt_out.reshape(-1,tgt_out.shape[-1]))
+        optimizer.zero_grad()
+
         loss.backward()
         # torch.nn.utils.clip_grad_norm_(model.parameters(), 0.25)
 
@@ -121,7 +128,7 @@ def evaluate(model, val_set, cfg):
 
     val_dataloader = DataLoader(val_set, batch_size=cfg.batch_size)
 
-    for timesteps, tgt, traj_mask, target_state, env_coef_seq, traj_len in val_dataloader:
+    for timesteps, tgt, traj_mask, target_state, env_coef_seq, traj_len, idx in val_dataloader:
         timesteps = timesteps.to(cfg.device)
         src = env_coef_seq.to(cfg.device)
         tgt = tgt.to(cfg.device)
@@ -132,64 +139,74 @@ def evaluate(model, val_set, cfg):
         logits = model(src, tgt_input, src_mask, tgt_mask, src_padding_mask, tgt_padding_mask, src_padding_mask,timesteps)
         
         tgt_out = tgt[:, 1:, :]
-        loss = F.mse_loss(logits.reshape(-1, logits.shape[-1]), tgt_out.reshape(-1,tgt_out.shape[-1]))
+        logits =  logits.view(-1,1)[(~tgt_padding_mask).view(-1,)]
+        tgt_out = tgt_out.reshape(-1,1)[(~tgt_padding_mask).view(-1,)]
+        # loss = loss_fn(logits.reshape(-1, logits.shape[-1]), tgt_out.reshape(-1))
+        loss = F.mse_loss(logits, tgt_out)
+        
         losses += loss.item()
 
     return losses / len(val_dataloader)
 
 
-def translate(model: torch.nn.Module, test_set, tr_set_stats, cfg, env):
+def translate(model: torch.nn.Module, test_idx, test_set, tr_set_stats, cfg, env):
     model.eval()
     test_dataloader = DataLoader(test_set, batch_size=1)
     test_set_a_preds = []
     test_set_txy_preds = []
     path_lens = []
-    test_idx = 0
-    for timesteps, tgt, traj_mask, target_state, env_coef_seq, traj_len in test_dataloader:
-        env.reset()
-        timesteps = timesteps.to(cfg.device)
-        # print(f"env.state = {env.state}")
-        test_idx += 1
-        if test_idx ==50:
-            break
-        src = env_coef_seq.to(cfg.device)
-        dummy_tgt_for_mask = tgt.to(cfg.device)[:, :-1, :]
-        src_mask, tgt_mask, src_padding_mask, _ = create_mask(src, dummy_tgt_for_mask, traj_len, cfg.device)
-        # memory is the encoder output
-        memory =  model.encode(src, src_mask, timesteps)
-        preds = torch.zeros((1, cfg.context_len, dummy_tgt_for_mask.shape[2]),dtype=torch.float32, device=cfg.device)
-        txy_preds = np.zeros((1, cfg.context_len, 3),dtype=np.float32,)
-        # print(f" preds.shape = {preds.shape}, tgt.shape = {tgt.shape}")
-        preds[0,0,:] = tgt[0,0]
-
-        for i in range(cfg.context_len-1):
-            memory = memory.to(cfg.device)
-            out = model.decode(preds, memory, tgt_mask, timesteps)
-            # print(f"out.shape = {out.shape}")
-            gen = model.generator(out)
-            # print(f"gen[0,{i}:{i+5},:] = {gen[0,i:i+5,:]}")
-            preds[0,i+1,:] = gen[0,i,:].detach()
-            a = preds[0,i+1,:].cpu().numpy().copy()
-            # print(f"a = {a}")
-            txy, reward ,done, info = env.step(a)
-            txy_preds[0,i+1,:] = txy 
-            # TODO: ***IMP*****: reduce GPU-CPU communication
-            # print(f"-------- {txy}, {target_state}, {tr_set_stats}")
-            # print(f"**** check : norm: {np.linalg.norm((txy[1:]-target_state[0,1:].numpy())) }")
-            if done:
-                # print(f"when done env.state = {env.state}")
-
-                # print(f" ########### DONE ################")
-                path_lens.append(i)
+    count = 0
+    with torch.no_grad():
+        # for sample in range(len(test_set)):
+        # timesteps, tgt, traj_mask, target_state, env_coef_seq, traj_len, idx = test_set[sample]
+        for timesteps, tgt, traj_mask, target_state, env_coef_seq, traj_len, idx in test_dataloader:
+            env.reset()
+            idx = idx[0].item() #initially idx = tensor([0])
+            rzn = test_idx[idx]
+            env.set_rzn(rzn)
+            timesteps = timesteps.to(cfg.device)
+            # print(f"env.state = {env.state}")
+            count += 1
+            if count ==50:
                 break
+            src = env_coef_seq.to(cfg.device)
+            dummy_tgt_for_mask = tgt.to(cfg.device)[:, :-1, :]
+            src_mask, tgt_mask, src_padding_mask, _ = create_mask(src, dummy_tgt_for_mask, traj_len, cfg.device)
+            # memory is the encoder output
+            memory =  model.encode(src, src_mask, timesteps)
+            preds = torch.zeros((1, cfg.context_len, dummy_tgt_for_mask.shape[2]),dtype=torch.float32, device=cfg.device)
+            txy_preds = np.zeros((1, cfg.context_len, 3),dtype=np.float32,)
+            # print(f" preds.shape = {preds.shape}, tgt.shape = {tgt.shape}")
+            preds[0,0,:] = tgt[0,0]
 
-        if test_idx in [2, 4, 12, 14, 22, 24]:
-            # print(f"preds = {preds[0]} ")
-            # print(f"tgy = {tgt} ")
-            mse = F.mse_loss(preds[0].cpu(),tgt[0,0].cpu())
-            print(f"mse = {mse}")
-        test_set_a_preds.append(preds.cpu())
-        test_set_txy_preds.append(np.array(txy_preds))
+            for i in range(cfg.context_len-1):
+                memory = memory.to(cfg.device)
+                out = model.decode(preds, memory, tgt_mask, timesteps)
+                # print(f"out.shape = {out.shape}")
+                gen = model.generator(out)
+                # print(f"gen[0,{i}:{i+5},:] = {gen[0,i:i+5,:]}")
+                preds[0,i+1,:] = gen[0,i,:].detach()
+                a = preds[0,i+1,:].cpu().numpy().copy()
+                # print(f"a = {a}")
+                txy, reward ,done, info = env.step(a)
+                txy_preds[0,i+1,:] = txy 
+                # TODO: ***IMP*****: reduce GPU-CPU communication
+                # print(f"-------- {txy}, {target_state}, {tr_set_stats}")
+                # print(f"**** check : norm: {np.linalg.norm((txy[1:]-target_state[0,1:].numpy())) }")
+                if done:
+                    # print(f"when done env.state = {env.state}")
+
+                    # print(f" ########### DONE ################")
+                    path_lens.append(i)
+                    break
+
+            if count in [2, 4, 12, 14, 22, 24]:
+                # print(f"preds = {preds[0]} ")
+                # print(f"tgy = {tgt} ")
+                mse = F.mse_loss(preds[0].cpu(),tgt[0,1:].cpu())
+                print(f"mse = {mse}")
+            test_set_a_preds.append(preds.cpu())
+            test_set_txy_preds.append(np.array(txy_preds))
     return test_set_a_preds,test_set_txy_preds, path_lens
 
 
@@ -339,7 +356,7 @@ def train_model(args, cfg_name):
     # visualize_input(test_set, stats=None, log_wandb=True, at_time=119, info_str='test', color_by_time=False)
 
 
-    _, dummy_target, _, _, dummy_env_coef_seq, _ = tr_set[0]
+    _, dummy_target, _, _, dummy_env_coef_seq, _,_ = tr_set[0]
     src_vec_dim = dummy_env_coef_seq.shape[-1]
     tgt_vec_dim = dummy_target.shape[-1]
     print(f"src_vec_dim = {src_vec_dim} \n tgt_vec_dim = {tgt_vec_dim}")
@@ -349,7 +366,6 @@ def train_model(args, cfg_name):
                                  dim_feedforward=None,     # TODO: add dim_ffn to cfg
                                  max_len=context_len).to(cfg.device)
 
-    rnn = 
    
     # optimizer = torch.optim.Adam(transformer.parameters(), lr=0.00001, betas=(0.9, 0.98), eps=1e-9)
     optimizer = torch.optim.AdamW(
@@ -365,14 +381,14 @@ def train_model(args, cfg_name):
     wandb.run.summary["total params"] = pytorch_total_params
     wandb.run.summary["trainable params"] = pytorch_trainable_params
 
-    for epoch in range(1, num_epochs+1):
+    for epoch in range(0, num_epochs+1):
         print(f"epoch {epoch}")
         start_time = timer()
         train_loss = train_epoch(transformer, optimizer, tr_set, cfg, args)
         end_time = timer()
         val_loss = evaluate(transformer, val_set, cfg)
         if epoch%500 == 0:
-            tr_set_a_preds, tr_set_txy_preds, path_lens = translate(transformer, tr_set, None, cfg, env)
+            tr_set_a_preds, tr_set_txy_preds, path_lens = translate(transformer, train_idx_set, tr_set, None, cfg, env)
             visualize_output(tr_set_txy_preds, 
                                 path_lens,
                                 iter_i = 0, 
@@ -398,7 +414,7 @@ def train_model(args, cfg_name):
 
 
     # test_set_preds, path_lens = translate(transformer, test_set, tr_set_stats , cfg)
-    tr_set_a_preds, tr_set_txy_preds, path_lens = translate(transformer, tr_set, None, cfg, env)
+    tr_set_a_preds, tr_set_txy_preds, path_lens = translate(transformer,train_idx_set, tr_set, None, cfg, env)
     visualize_output(tr_set_txy_preds, 
                         path_lens,
                         iter_i = 0, 
