@@ -25,21 +25,22 @@ comp_val_loss: False
 
 max_eval_ep_len: 120
 num_eval_ep: 200
+eval_inerval: 500
 batch_size: 64
 
-lr: 0.00005
+lr: 0.00002
 use_scheduler: True
 wt_decay: 0.0000
 warmup_steps: 1000
-num_epochs: 10000
+num_epochs: 2
 num_updates_per_iter: 500
 add_target_loss: False
 a_tl: 1000
 
 target_conditioning: True 
-num_encoder_layers: 5
-num_decoder_layers: 5
-context_len: 119
+num_encoder_layers: 4
+num_decoder_layers: 4
+context_len: 80
 embed_dim: 32
 n_heads: 32
 dropout_p: 0.1

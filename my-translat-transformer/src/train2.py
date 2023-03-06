@@ -108,7 +108,7 @@ def train_epoch(model, optimizer, tr_set, cfg, args):
         # loss = loss_fn(logits.reshape(-1, logits.shape[-1]), tgt_out.reshape(-1))
 
         loss = F.mse_loss(logits, tgt_out)
-        # print("model predictions:", logits.reshape(-1, logits.shape[-1]),)
+        # print("model predictions:", logits.reshape(-1, logits.shape[-1]),) 
         # print("tgt_out:", tgt_out.reshape(-1,tgt_out.shape[-1]))
         optimizer.zero_grad()
 
@@ -335,8 +335,7 @@ def train_model(args, cfg_name):
     # visualize_input(tr_set, stats=tr_set_stats, log_wandb=True, at_time=50)
     # visualize_input(val_set, stats=None, log_wandb=True, at_time=119, info_str='val', color_by_time=False)
     # visualize_input(test_set, stats=None, log_wandb=True, at_time=119, info_str='test', color_by_time=False)
-
-
+    
     _, dummy_target, _, _, dummy_env_coef_seq, _,_ = tr_set[0]
     src_vec_dim = dummy_env_coef_seq.shape[-1]
     tgt_vec_dim = dummy_target.shape[-1]
@@ -347,6 +346,7 @@ def train_model(args, cfg_name):
                                  dim_feedforward=None,     # TODO: add dim_ffn to cfg
                                  max_len=context_len).to(cfg.device)
 
+    rnn = TransRNN(src_vec_dim, 2*src_vec_dim, tgt_vec_dim, device, context_len).to(cfg.device)
    
     # optimizer = torch.optim.Adam(transformer.parameters(), lr=0.00001, betas=(0.9, 0.98), eps=1e-9)
     optimizer = torch.optim.AdamW(
@@ -355,8 +355,8 @@ def train_model(args, cfg_name):
                     weight_decay=wt_decay
                 )
 
-    pytorch_trainable_params = sum(p.numel() for p in transformer.parameters() if p.requires_grad)
-    pytorch_total_params = sum(p.numel() for p in transformer.parameters())
+    pytorch_trainable_params = sum(p.numel() for p in rnn.parameters() if p.requires_grad)
+    pytorch_total_params = sum(p.numel() for p in rnn.parameters())
     print(f"total params = {pytorch_total_params}")
     print(f"trainable params = {pytorch_trainable_params}")
     wandb.run.summary["total params"] = pytorch_total_params
@@ -366,61 +366,60 @@ def train_model(args, cfg_name):
     for epoch in range(0, num_epochs+1):
         print(f"epoch {epoch}")
         epoch_start_time = timer()
-        train_loss = train_epoch(transformer, optimizer, tr_set, cfg, args)
+        train_loss = rnn_train_epoch(rnn, optimizer, tr_set, cfg)
         epoch_end_time = timer()
-        val_loss = evaluate(transformer, val_set, cfg)
-        if epoch % eval_inerval == 0:
-            tr_op_traj_dict_list, tr_results = translate(transformer, train_idx_set, tr_set, None, 
-                                                   cfg, env, earlybreak=50)
-            tr_set_txy_preds = [d['states'] for d in tr_op_traj_dict_list]
-            path_lens = [d['n_tsteps'] for d in tr_op_traj_dict_list]
-            visualize_output(tr_set_txy_preds, 
-                                path_lens,
-                                iter_i = 0, 
-                                stats=None, 
-                                env=env, 
-                                log_wandb=True, 
-                                plot_policy=False,
-                                traj_idx=None,      #None=all, list of rzn_ids []
-                                show_scatter=True,
-                                at_time=None,
-                                color_by_time=True, #TODO: fix tdone issue in src_utils
-                                plot_flow=True,
-                                wandb_suffix="train")
+        val_loss = rnn_evaluate(rnn, val_set, cfg)
+        # if epoch % eval_inerval == 0:
+        #     tr_op_traj_dict_list, tr_results = translate(transformer, train_idx_set, tr_set, None, 
+        #                                            cfg, env, earlybreak=50)
+        #     tr_set_txy_preds = [d['states'] for d in tr_op_traj_dict_list]
+        #     path_lens = [d['n_tsteps'] for d in tr_op_traj_dict_list]
+        #     visualize_output(tr_set_txy_preds, 
+        #                         path_lens,
+        #                         iter_i = 0, 
+        #                         stats=None, 
+        #                         env=env, 
+        #                         log_wandb=True, 
+        #                         plot_policy=False,
+        #                         traj_idx=None,      #None=all, list of rzn_ids []
+        #                         show_scatter=True,
+        #                         at_time=None,
+        #                         color_by_time=True, #TODO: fix tdone issue in src_utils
+        #                         plot_flow=True,
+        #                         wandb_suffix="train")
             
-            val_op_traj_dict_list, val_results = translate(transformer, val_idx_set, val_set, None, 
-                                                           cfg, env, earlybreak=200)
-            val_set_txy_preds = [d['states'] for d in val_op_traj_dict_list]
-            path_lens = [d['n_tsteps'] for d in val_op_traj_dict_list]
-            visualize_output(val_set_txy_preds, 
-                                path_lens,
-                                iter_i = 0, 
-                                stats=None, 
-                                env=env, 
-                                log_wandb=True, 
-                                plot_policy=False,
-                                traj_idx=None,      #None=all, list of rzn_ids []
-                                show_scatter=True,
-                                at_time=None,
-                                color_by_time=True, #TODO: fix tdone issue in src_utils
-                                plot_flow=True,
-                                wandb_suffix="val")
+        #     val_op_traj_dict_list, val_results = translate(transformer, val_idx_set, val_set, None, 
+        #                                                    cfg, env, earlybreak=200)
+        #     val_set_txy_preds = [d['states'] for d in val_op_traj_dict_list]
+        #     path_lens = [d['n_tsteps'] for d in val_op_traj_dict_list]
+        #     visualize_output(val_set_txy_preds, 
+        #                         path_lens,
+        #                         iter_i = 0, 
+        #                         stats=None, 
+        #                         env=env, 
+        #                         log_wandb=True, 
+        #                         plot_policy=False,
+        #                         traj_idx=None,      #None=all, list of rzn_ids []
+        #                         show_scatter=True,
+        #                         at_time=None,
+        #                         color_by_time=True, #TODO: fix tdone issue in src_utils
+        #                         plot_flow=True,
+        #                         wandb_suffix="val")
 
 
-        translate_avg_ep_len = val_results['translate/avg_ep_len']
-        translate_avg_val_loss = val_results['avg_val_loss']
-        success_ratio = val_results['translate/success_ratio']
-        count = val_results['runs_from_set(count)'] 
+        # translate_avg_ep_len = val_results['translate/avg_ep_len']
+        # translate_avg_val_loss = val_results['avg_val_loss']
+        # success_ratio = val_results['translate/success_ratio']
+        # count = val_results['runs_from_set(count)'] 
         log_dict = { "tr_loss_vs_epoch (unpadded elems)": train_loss,
             "val_loss_vs_epoch (unpadded elems)": val_loss,
-            "avg_val_loss (across pred len)": translate_avg_val_loss,
-            "success_ratio": success_ratio,
-            'runs_from_set(count)': count,
-            "ETA": translate_avg_ep_len,
+            # "avg_val_loss (across pred len)": translate_avg_val_loss,
+            # "success_ratio": success_ratio,
+            # 'runs_from_set(count)': count,
+            # "ETA": translate_avg_ep_len,
             # "lr" : scheduler.get_last_lr()[0] if use_scheduler else lr
             }
         wandb.log(log_dict)
-
 
         time_elapsed = str(datetime.now().replace(microsecond=0) - start_time)
         print('='*60)
@@ -433,21 +432,20 @@ def train_model(args, cfg_name):
  
         
         # TODO: save model and best metrics after completing evaluation
-        if translate_avg_ep_len < min_ETA:
-            min_ETA = translate_avg_ep_len
-            print("saving current model at: " + save_model_path)
+        # if translate_avg_ep_len < min_ETA:
+        #     min_ETA = translate_avg_ep_len
+        #     print("saving current model at: " + save_model_path)
 
-            best_avg_episode_length = translate_avg_ep_len
-            best_success_ratio = success_ratio
-            best_epoch = epoch
-            # "avg_val_loss"= eval_avg_val_loss
+        #     best_avg_episode_length = translate_avg_ep_len
+        #     best_success_ratio = success_ratio
+        #     best_epoch = epoch
+        #     # "avg_val_loss"= eval_avg_val_loss
 
-            torch.save(transformer, save_model_path)
-            tmp_path = save_model_path[:-1]
-            torch.save(transformer, tmp_path)
+        #     torch.save(transformer, save_model_path)
+        #     tmp_path = save_model_path[:-1]
+        #     torch.save(transformer, tmp_path)
 
-
-
+    sys.exit()
     # save_model_path = join(log_dir, wandb_exp_name)
     # torch.save(transformer, save_model_path)
     cfg_copy_path = save_model_path[:-2] + "yml"

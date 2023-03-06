@@ -293,7 +293,11 @@ class create_action_dataset(Dataset):
         # print(f"### verify: target_state = {target_state}")
         # sys.exit()
         dummy_t = float(int(traj_len)) # time stamp for target state.
-        target_state = np.insert(target_state,0,dummy_t,axis=1)
+        if len(target_state.shape) == 2:
+            target_state = np.insert(target_state,0,dummy_t,axis=1)
+        elif len(target_state.shape) == 1:
+            target_state = np.insert(target_state,0,dummy_t,axis=0)
+
         # print(f"### verify: target_state = {target_state}")
         return  timesteps, actions, traj_mask, target_state, env_coef_seq, traj_len, idx
 
@@ -385,7 +389,7 @@ def visualize_output(preds_list,
                         at_time=None,
                         color_by_time=True,
                         plot_flow=True,
-
+                        wandb_suffix="",
                         ):
  
     print(f"path_lens = {path_lens}")
@@ -419,9 +423,7 @@ def visualize_output(preds_list,
     for idx,traj in enumerate(preds_list):
         if idx in traj_idx:
             states = preds_list[idx]
-            # print(f"states.shape = {states.shape}\n ")
-            # print(f"states = {states}")
-            t_done = 50 #TODO: change 
+            t_done = path_lens[idx] #TODO: change 
             # print(f"******* Verify: visualize_op: states.shape= {states.shape}")
             if at_time != None:
                 assert(at_time >= 1), f"Can only plot at_time >= 1 only"
@@ -440,7 +442,6 @@ def visualize_output(preds_list,
             # shape: (eval_batch_size, max_test_ep_len, state_dim)
             if color_by_time:
                 plt.plot(states[0,:t_done+1,1], states[0,:t_done+1,2], color=scalarMap.to_rgba(t_done), alpha=0.2)
-                plt.plot
             else:
                 plt.plot(states[0,:t_done+1,1], states[0,:t_done+1,2])
 
@@ -474,7 +475,7 @@ def visualize_output(preds_list,
     plt.savefig(fname, dpi=300)
 
     if log_wandb:
-        wandb.log({"pred_traj_fig": wandb.Image(fname)})
+        wandb.log({"pred_traj_fig_"+wandb_suffix: wandb.Image(fname)})
 
 
     return fig
