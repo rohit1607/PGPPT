@@ -1,0 +1,51 @@
+
+# cfg = {
+#     "env_name": "gym_examples/contGrid-v5_1",
+#     "state_dim": 3,
+#     "action_dim": 1,
+#     "action_range": [0, 6.28318],
+#     "F": 1,
+#     "vel_field": "/home/rohit/Documents/Research/Planning_with_transformers/Translation_transformer/my-translat-transformer/data/DG3/raw_data/nT_120",
+#     "del_t": 1.,
+#     "scale_velocity": True,
+#     "vmax_by_F": 2,
+#     "space_scale": 100,
+#     "target_radius": 2,
+
+#     "add_transition_noise_during_inf": False,
+#     "noise_var": [0.1,0],
+
+#     "dataset_name": "DG3",
+#     "dataset_path": "data/DG3/traj_data_for_model_5_trad2.pkl",
+#     "log_dir": "log",
+#     "params2_name": "data/DG3/params.yml",
+
+#     "random_split": True,
+#     "split_tr_tst_val": [0.8, 0.1, 0.1],
+#     "split_ran_seed": 42,
+#     "comp_val_loss": False,
+
+#     "max_eval_ep_len": 120,
+#     "num_eval_ep": 200,
+#     "eval_inerval": 50,
+#     "batch_size": 128,
+
+#     "lr": 0.000005,
+#     "use_scheduler": True,
+#     "wt_decay": 0.0001,
+#     "warmup_steps": 500,
+#     "num_epochs": 5000,
+#     "num_updates_per_iter": 500,
+#     "add_target_loss": False,
+#     "a_tl": 1000,
+
+#     "target_conditioning": True ,
+#     "num_encoder_layers": 4,
+#     "num_decoder_layers": 4,
+#     "context_len": 100,
+#     "embed_dim": 32,
+#     "n_heads": 32,
+#     "dropout_p": 0.1,
+
+#     "device": 'cuda',
+# }

@@ -15,6 +15,10 @@ def save_object(obj, filename):
     with open(filename, 'wb') as outp:  # Overwrites any existing file.
         pickle.dump(obj, outp, pickle.HIGHEST_PROTOCOL)
 
+def load_pkl(path):
+    with open(path, 'rb') as file:
+        loaded_file = pickle.load(file)
+    return loaded_file
 
 def get_angle_in_0_2pi(angle):
     return (angle + 2 * np.pi) % (2 * np.pi)
@@ -96,3 +100,7 @@ class log_and_viz_params:
             plt.savefig(savefig, dpi= 1200)
         
         return
+    
+def print_dict(dic):
+    for key, value in dic.items():
+        print(f"{key}:\t {value}")
