@@ -457,6 +457,7 @@ def plot_vel_field(env,t,r=0, g_strmplot_lw=1, g_strmplot_arrowsize=1):
     plt.streamplot(X, Y, vx_grid, vy_grid, color = 'grey', zorder = 0,  linewidth=g_strmplot_lw, arrowsize=g_strmplot_arrowsize, arrowstyle='->')
     v_mag_grid = (vx_grid**2 + vy_grid**2)**0.5
     plt.contourf(X, Y, v_mag_grid, cmap = "Blues", alpha = 0.5, zorder = -1e5)
+    # dummmy
 
 def denormalize(txy_norm,tr_stats):
     mean, std = tr_stats
