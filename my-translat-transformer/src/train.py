@@ -451,8 +451,8 @@ def train_model(args=None, cfg_name=None):
                                         )
 
     # train_dataloader = DataLoader(tr_set, batch_size=batch_size)
-    # visualize_input(val_set, stats=None, log_wandb=True, at_time=119, info_str='val', color_by_time=False)
-    # visualize_input(test_set, stats=None, log_wandb=True, at_time=119, info_str='test', color_by_time=False)
+    # visualize_input(val_set, stats=None, log_wandb=True, at_time=100, info_str='val', color_by_time=False)
+    # visualize_input(test_set, stats=None, log_wandb=True, at_time=100, info_str='test', color_by_time=False)
 
     _, dummy_target, _, _, dummy_env_coef_seq, _,_,dummy_flow_dir,_ = tr_set[0]
     src_vec_dim = dummy_env_coef_seq.shape[-1]
@@ -461,13 +461,13 @@ def train_model(args=None, cfg_name=None):
     # intantiate gym env for vizualization purposes
     env_4_viz = setup_env(dummy_flow_dir)
 
-    # visualize_input(tr_set, log_wandb=True, at_time=119, env=env_4_viz)
-    # simulate_tgt_actions(tr_set,
-    #                         env=env_4_viz,
-    #                         log_wandb=True,
-    #                         wandb_fname='simulate_tgt_actions',
-    #                         plot_flow=True,
-    #                         at_time=119)
+    visualize_input(tr_set, log_wandb=True, at_time=99, env=env_4_viz)
+    simulate_tgt_actions(tr_set,
+                            env=env_4_viz,
+                            log_wandb=True,
+                            wandb_fname='simulate_tgt_actions',
+                            plot_flow=True,
+                            at_time=100)
     
     transformer = mySeq2SeqTransformer_v1(num_encoder_layers, num_decoder_layers, embed_dim,
                                  n_heads, src_vec_dim, tgt_vec_dim, 
