@@ -733,7 +733,8 @@ def simulate_tgt_actions(traj_dataset,
     if env != None:
         plt.xlim([0, env.xlim])
         plt.ylim([0, env.ylim])
- 
+        obstacle = DOLS_obstacle()
+        ax.add_patch(obstacle)
         if env.target_pos.ndim == 1:
             target_circle = plt.Circle(env.target_pos, env.target_rad, color='r', alpha=0.3)
             ax.add_patch(target_circle)
@@ -822,6 +823,8 @@ def visualize_input(traj_dataset,
     if env != None:
         plt.xlim([0, env.xlim])
         plt.ylim([0, env.ylim])
+        obstacle = DOLS_obstacle()
+        ax.add_patch(obstacle)
         print("****VERIFY: env.target_pos: ", env.target_pos)
         print(f"**** verify: {len(env.target_pos)}")
         if env.target_pos.ndim == 1:

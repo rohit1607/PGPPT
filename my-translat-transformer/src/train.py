@@ -705,16 +705,15 @@ class jugaad_cfg:
 def load_prev_and_test(args, cfg_name):
     # load model
     # tmp_path = ROOT + "log/my_translat_GPTdset_DG3_model_04-01-03-20.pt"
-    tmp_path = ROOT + "log/my_translat_GPTdset_DG3_model_03-30-23-11.pt"
-
+    tmp_path = ROOT + "log/my_translat_DOLS_Cylinder_model_05-20-12-03.pt" 
     transformer = torch.load(tmp_path)
     model_name = tmp_path[:-3].split('/')[-1]
     # load unseen dataset
-    dataset_path = ROOT + "data/GPT_dset_DG3/static_obs/GPTdset_DG3_g100x100x120_r5k_Obsv1_w5_1dataset_single_25305.pkl"
+    dataset_path = "/home/rohit/Documents/Research/Planning_with_transformers/Translation_transformer/my-translat-transformer/data/DOLS_Cylinder/targ_2/gathered_targ_2.pkl"
     traj_dataset = load_pkl(dataset_path)
     dataset_name = dataset_path[:-4].split('/')[-1]
     # src_stats_path = tmp_path[:-3] + "_src_stats.npy"
-    src_stats_path = "/home/rohit/Documents/Research/Planning_with_transformers/Translation_transformer/my-translat-transformer/log/my_translat_GPTdset_DG3_model_04-03-14-07_src_stats.npy"
+    src_stats_path = "/home/rohit/Documents/Research/Planning_with_transformers/Translation_transformer/my-translat-transformer/log/my_translat_DOLS_Cylinder_model_05-20-12-03_src_stats.npy"
     src_stats = np.load(src_stats_path)
     src_stats = (src_stats[0], src_stats[1])
 
@@ -722,34 +721,41 @@ def load_prev_and_test(args, cfg_name):
                                     split_ratio=[0.8,0.05,0.15], 
                                     random_seed=42,
                                     random_split=True)
-    us_test_traj_set, _, _ = set_split
-    us_test_idx_set, _, _ = idx_split
-    us_test_traj_set = create_action_dataset_v2(us_test_traj_set, 
+    us_train_traj_set, us_test_traj_set, us_val_traj_set = set_split
+    us_train_idx_set, us_test_idx_set, us_val_idx_set = idx_split
+    us_train_traj_set = create_action_dataset_v2(us_train_traj_set, 
                             idx_set=[None],
-                            context_len=120,
+                            context_len=101,
                             # norm_params_4_val = src_stats
                                         )
-    _, _, us_test_traj_set = set_split
-    _, _, us_test_idx_set = idx_split
+    # _, _, us_test_traj_set = set_split
+    # _, _, us_test_idx_set = idx_split
+    us_val_traj_set = create_action_dataset_v2(us_val_traj_set, 
+                            idx_set=[None],
+                            context_len=101,
+                            norm_params_4_val = src_stats
+                                        )
     us_test_traj_set = create_action_dataset_v2(us_test_traj_set, 
                             idx_set=[None],
-                            context_len=120,
+                            context_len=101,
                             norm_params_4_val = src_stats
                                         )
     
     # src_stats = us_test_traj_set.get_src_stats()
     test_idx_set = None #TODO: clean unneeded vars and args
-    # read cfg not working and requires postprocessing
+    # read cfg not working and requires postprocessing 
     # cfg_path =  tmp_path[:-3] + ".yml"
     # cfg =  read_cfg_file(cfg_path)
-    cfg = jugaad_cfg(context_len=120, device='cuda')
-    # op_traj_dict_list, results = translate(transformer,us_test_idx_set, us_test_traj_set, 
-    #                                         None, cfg, earlybreak=500)
-    # save_object(op_traj_dict_list,f"/home/rohit/Documents/Research/Planning_with_transformers/Translation_transformer/my-translat-transformer/paper_plots/my_translat_GPTdset_DG3_model_03-30-23-11/GPTdset_DG3_g100x100x120_r5k_Obsv1_w5_1dataset_single_25305/op_traj_dict_list.pkl")
-    # save_object(results,f"/home/rohit/Documents/Research/Planning_with_transformers/Translation_transformer/my-translat-transformer/paper_plots/my_translat_GPTdset_DG3_model_03-30-23-11/GPTdset_DG3_g100x100x120_r5k_Obsv1_w5_1dataset_single_25305/results.pkl")
+    cfg = jugaad_cfg(context_len=101, device='cuda')
+    op_traj_dict_list, results = translate(transformer,us_test_idx_set, us_test_traj_set, 
+                                            None, cfg, earlybreak=500)
+    os.makedirs(os.path.dirname("/home/rohit/Documents/Research/Planning_with_transformers/Translation_transformer/my-translat-transformer/paper_plots/my_translat_DOLS_Cylinder_model_05-20-12-03/DOLS_targ2/op_traj_dict_list.pkl"), exist_ok=True)
+    os.makedirs(os.path.dirname("/home/rohit/Documents/Research/Planning_with_transformers/Translation_transformer/my-translat-transformer/paper_plots/my_translat_DOLS_Cylinder_model_05-20-12-03/DOLS_targ2/results.pkl"), exist_ok=True)
+    save_object(op_traj_dict_list,f"/home/rohit/Documents/Research/Planning_with_transformers/Translation_transformer/my-translat-transformer/paper_plots/my_translat_DOLS_Cylinder_model_05-20-12-03/DOLS_targ2/op_traj_dict_list.pkl")
+    save_object(results,f"/home/rohit/Documents/Research/Planning_with_transformers/Translation_transformer/my-translat-transformer/paper_plots/my_translat_DOLS_Cylinder_model_05-20-12-03/DOLS_targ2/results.pkl")
 
-    op_traj_dict_list = load_pkl(f"/home/rohit/Documents/Research/Planning_with_transformers/Translation_transformer/my-translat-transformer/paper_plots/my_translat_GPTdset_DG3_model_03-30-23-11/GPTdset_DG3_g100x100x120_r5k_Obsv1_w5_1dataset_single_25305/op_traj_dict_list.pkl")
-    results = load_pkl(f"/home/rohit/Documents/Research/Planning_with_transformers/Translation_transformer/my-translat-transformer/paper_plots/my_translat_GPTdset_DG3_model_03-30-23-11/GPTdset_DG3_g100x100x120_r5k_Obsv1_w5_1dataset_single_25305/results.pkl")
+    op_traj_dict_list = load_pkl(f"/home/rohit/Documents/Research/Planning_with_transformers/Translation_transformer/my-translat-transformer/paper_plots/my_translat_DOLS_Cylinder_model_05-20-12-03/DOLS_targ2/op_traj_dict_list.pkl")
+    results = load_pkl(f"/home/rohit/Documents/Research/Planning_with_transformers/Translation_transformer/my-translat-transformer/paper_plots/my_translat_DOLS_Cylinder_model_05-20-12-03/DOLS_targ2/results.pkl")
     _, dummy_target, _, _, dummy_env_coef_seq, _,_,dummy_flow_dir,_ = us_test_traj_set[0]
     # intantiate gym env for vizualization purposes
     env_4_viz = setup_env(dummy_flow_dir)
@@ -761,7 +767,7 @@ def load_prev_and_test(args, cfg_name):
     
     # taken from vis_traj_with_attention.py in decision transformer project
     print(f"model_name = {model_name}")
-    save_dir = "paper_plots/"  + model_name + "/" + dataset_name
+    save_dir = "paper_plots/"  + model_name + "/DOLS_targ2"
     save_dir = join(ROOT,save_dir)
     if not os.path.exists(save_dir):
         os.mkdir(save_dir)
@@ -776,9 +782,9 @@ def load_prev_and_test(args, cfg_name):
     pp = paper_plots(env_4_viz, op_traj_dict_list, src_stats,
                         paper_plot_info=paper_plot_info,
                         save_dir=save_dir)
-    # pp.plot_val_ip_op(us_test_traj_set, test_set_txy_preds, path_lens, success_list)
+    pp.plot_val_ip_op(us_test_traj_set, test_set_txy_preds, path_lens, success_list)
     # pp.plot_traj_by_arr(us_test_traj_set,set_str="_us_test_")
-    # pp.plot_train_val_ip_op(train_traj_dataset, val_traj_dataset)
+    pp.plot_train_val_ip_op(us_train_traj_set, us_test_traj_set)
     # pp.plot_traj_by_arr(val_traj_dataset, set_str="_val")
     # pp.plot_att_heatmap(100)
     # pp.plot_traj_by_att("a_a_attention")
@@ -799,26 +805,26 @@ def load_prev_and_test(args, cfg_name):
     #                     wandb_suffix="test_on_unseen",
     #                     model_name=model_name+"_on_"+dataset_name)
     
-    plot_all_attention_mats(all_att_mat_list[0],
-                            log_wandb=False, 
-                            model_name=model_name+"_on_"+dataset_name)
-    for t in [i*10 for i in range(1,11)]:
-        viz_op_traj_with_attention(test_set_txy_preds,
-                            all_att_mat_list, 
-                            path_lens,
-                            mode='dec_sa',       #or 'a_s_attention'
-                            average_across_layers=True,
-                            stats=None, 
-                            env=env_4_viz, 
-                            log_wandb=False, 
-                            scale_each_row=True,
-                            plot_policy=False,
-                            traj_idx=None,      #None=all, list of rzn_ids []
-                            show_scatter=False,
-                            plot_flow=True,
-                            at_time=t,
-                            model_name=model_name+"_on_"+dataset_name
-                            )
+    # plot_all_attention_mats(all_att_mat_list[0],
+    #                         log_wandb=False, 
+    #                         model_name=model_name+"_on_"+dataset_name)
+    # for t in [i*10 for i in range(1,11)]:
+    #     viz_op_traj_with_attention(test_set_txy_preds,
+    #                         all_att_mat_list, 
+    #                         path_lens,
+    #                         mode='dec_sa',       #or 'a_s_attention'
+    #                         average_across_layers=True,
+    #                         stats=None, 
+    #                         env=env_4_viz, 
+    #                         log_wandb=False, 
+    #                         scale_each_row=True,
+    #                         plot_policy=False,
+    #                         traj_idx=None,      #None=all, list of rzn_ids []
+    #                         show_scatter=False,
+    #                         plot_flow=True,
+    #                         at_time=t,
+    #                         model_name=model_name+"_on_"+dataset_name
+    #                         )
     # viz_op_traj_with_attention(test_set_txy_preds,
     #                     all_att_mat_list, 
     #                     path_lens,
@@ -835,17 +841,17 @@ def load_prev_and_test(args, cfg_name):
     #                     at_time=None,
     #                     model_name=model_name+"_on_"+dataset_name
     #                     )   
-    print(f" Results on unseen test")
-    print_dict(results)  
-    # visualize_input(us_test_traj_set, at_time=119, 
-    #                                   env=env_4_viz,
-    #                                   log_wandb=False,
-    #                                   data_name=dataset_name
-    #                                         )
+    # print(f" Results on unseen test")
+    # print_dict(results)  
+    # # visualize_input(us_test_traj_set, at_time=119, 
+    # #                                   env=env_4_viz,
+    # #                                   log_wandb=False,
+    # #                                   data_name=dataset_name
+    # #                                         )
 
-    print(f" Results on unseen test")
-    print_dict(results)
-    return        
+    # print(f" Results on unseen test")
+    # print_dict(results)
+    # return        
 
 
 
