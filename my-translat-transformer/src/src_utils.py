@@ -819,6 +819,8 @@ def visualize_input(traj_dataset,
             # print(f"bcords: {states[-1,1], states[-1,2]}")
     plt.xlim([0, 100.])
     plt.ylim([0, 100.])
+    if color_by_time:
+        cbar = plt.colorbar(scalarMap, label="Arrival Time")
 
     if env != None:
         plt.xlim([0, env.xlim])
