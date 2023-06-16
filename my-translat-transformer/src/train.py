@@ -747,7 +747,7 @@ def load_prev_and_test(args, cfg_name):
     # cfg_path =  tmp_path[:-3] + ".yml"
     # cfg =  read_cfg_file(cfg_path)
     cfg = jugaad_cfg(context_len=101, device='cuda')
-    op_traj_dict_list, results = translate(transformer,us_test_idx_set, us_test_traj_set, 
+    op_traj_dict_list, results = translate(transformer,us_train_idx_set, us_train_traj_set, 
                                             None, cfg, earlybreak=500)
     os.makedirs(os.path.dirname("/home/rohit/Documents/Research/Planning_with_transformers/Translation_transformer/my-translat-transformer/paper_plots/my_translat_DOLS_Cylinder_model_05-20-12-03/DOLS_targ2/op_traj_dict_list.pkl"), exist_ok=True)
     os.makedirs(os.path.dirname("/home/rohit/Documents/Research/Planning_with_transformers/Translation_transformer/my-translat-transformer/paper_plots/my_translat_DOLS_Cylinder_model_05-20-12-03/DOLS_targ2/results.pkl"), exist_ok=True)
@@ -756,7 +756,7 @@ def load_prev_and_test(args, cfg_name):
 
     op_traj_dict_list = load_pkl(f"/home/rohit/Documents/Research/Planning_with_transformers/Translation_transformer/my-translat-transformer/paper_plots/my_translat_DOLS_Cylinder_model_05-20-12-03/DOLS_targ2/op_traj_dict_list.pkl")
     results = load_pkl(f"/home/rohit/Documents/Research/Planning_with_transformers/Translation_transformer/my-translat-transformer/paper_plots/my_translat_DOLS_Cylinder_model_05-20-12-03/DOLS_targ2/results.pkl")
-    _, dummy_target, _, _, dummy_env_coef_seq, _,_,dummy_flow_dir,_ = us_test_traj_set[0]
+    _, dummy_target, _, _, dummy_env_coef_seq, _,_,dummy_flow_dir,_ = us_train_traj_set[0]
     # intantiate gym env for vizualization purposes
     env_4_viz = setup_env(dummy_flow_dir)
 
@@ -782,9 +782,9 @@ def load_prev_and_test(args, cfg_name):
     pp = paper_plots(env_4_viz, op_traj_dict_list, src_stats,
                         paper_plot_info=paper_plot_info,
                         save_dir=save_dir)
-    pp.plot_val_ip_op(us_test_traj_set, test_set_txy_preds, path_lens, success_list)
+    pp.plot_val_ip_op(us_train_traj_set, test_set_txy_preds, path_lens, success_list)
     # pp.plot_traj_by_arr(us_test_traj_set,set_str="_us_test_")
-    pp.plot_train_val_ip_op(us_train_traj_set, us_test_traj_set)
+    # pp.plot_train_val_ip_op(us_train_traj_set, us_test_traj_set)
     # pp.plot_traj_by_arr(val_traj_dataset, set_str="_val")
     # pp.plot_att_heatmap(100)
     # pp.plot_traj_by_att("a_a_attention")

@@ -119,13 +119,16 @@ class paper_plots:
         ax.add_patch(rect)
         return
         
+    def DOLS_obstacle(self):
+        s=15
+        return plt.Circle([4.5*s, 3*s], 0.5*s, color='k', alpha=0.3)
         
     def plot_val_ip_op(self, traj_dataset,
                        preds_list,
                        path_lens,
                        success_list,
                         at_time=None):
-        fig, axs = plt.subplots(1, 2, sharey=True, figsize=(10,5))
+        fig, axs = plt.subplots(1, 2, sharey=True, figsize=(10,40))
 
         info = self.paper_plot_info["plot_val_ip_op"]
         
@@ -149,8 +152,10 @@ class paper_plots:
 
         ax = axs[0]
         self.setup_ax(ax)       
-        im = self.plot_vel_field(ax,t=vmax,r=199)
-        self.plot_obstacle(ax, xyw=xyw)
+        im = self.plot_vel_field(ax,t=vmax,r=9999)
+        # self.plot_obstacle(ax, xyw=xyw)
+        obstacle = self.DOLS_obstacle()
+        ax.add_patch(obstacle)
         # traj_dataset=random.shuffle(traj_dataset)
 
         for idx,traj in enumerate(ip_states_list):
@@ -167,8 +172,10 @@ class paper_plots:
         pr_t_dones = []
         ax = axs[1]
         self.setup_ax(ax, show_ylabel=False)
-        im = self.plot_vel_field(ax,t=vmax,r=199)
-        self.plot_obstacle(ax, xyw=xyw)
+        im = self.plot_vel_field(ax,t=vmax,r=9999)
+        # self.plot_obstacle(ax, xyw=xyw)
+        obstacle = self.DOLS_obstacle()
+        ax.add_patch(obstacle)
 
         for idx, traj in enumerate(preds_list[:1500]):
             states = preds_list[idx]
@@ -193,11 +200,11 @@ class paper_plots:
         # cbarv = fig.colorbar(im, ax=ax)
         # cbarv.set_label("Velocity Magnitude", fontsize=cbar_fontsize)
         
-        plt.subplots_adjust( left= 0.1, right=0.9, top=0.9, bottom=0.2, wspace=-0.05)
+        plt.subplots_adjust( left= 0.1, right=0.9, top=2, bottom=0.4, wspace=0.075, hspace=0.1)
 
         cax_arr = ax.inset_axes([1.05, 0, 0.05, 1])
         cax_vel = ax.inset_axes([1.30, 0, 0.05, 1])
-        cbar_fontsize = 15
+        cbar_fontsize = 10
         cbar = fig.colorbar(sm, ax=axs.ravel().tolist(), cax=cax_arr)
         cbar.set_label("Arrival Time (non-dim)", fontsize=cbar_fontsize)
      
@@ -231,7 +238,7 @@ class paper_plots:
 
         ax = axs[0]
         self.setup_ax(ax)       
-        im = self.plot_vel_field(ax,t=vmax,r=199)
+        im = self.plot_vel_field(ax,t=vmax,r=9999)
         # traj_dataset=random.shuffle(traj_dataset)
         for idx, traj in enumerate(tr_traj_dataset):
             timesteps, states, actions, returns_to_go, traj_mask,_ = traj
@@ -245,7 +252,7 @@ class paper_plots:
 
         ax = axs[1]
         self.setup_ax(ax)       
-        im = self.plot_vel_field(ax,t=vmax,r=199)
+        im = self.plot_vel_field(ax,t=vmax,r=9999)
         # traj_dataset=random.shuffle(traj_dataset)
         for idx, traj in enumerate(val_traj_dataset):
             timesteps, states, actions, returns_to_go, traj_mask,_ = traj
@@ -260,7 +267,7 @@ class paper_plots:
         pr_t_dones = []
         ax = axs[2]
         self.setup_ax(ax, show_ylabel=False)
-        im = self.plot_vel_field(ax,t=vmax,r=199)
+        im = self.plot_vel_field(ax,t=vmax,r=9999)
         print(f"{len(self.op_traj_dict_list)}")
         # sys.exit()
         for idx,traj in enumerate(self.op_traj_dict_list):
@@ -285,7 +292,7 @@ class paper_plots:
         
         # cbarv = fig.colorbar(im, ax=ax)
         # cbarv.set_label("Velocity Magnitude", fontsize=cbar_fontsize)
-        plt.subplots_adjust( left= 0.1, right=0.9, top=0.9, bottom=0.2, wspace=-0.05)
+        plt.subplots_adjust( left= 0.1, right=0.9, top=0.2, bottom=0.2, wspace=0.1)
 
         cax_arr = ax.inset_axes([1.05, 0, 0.05, 1])
         cax_vel = ax.inset_axes([1.30, 0, 0.05, 1])
@@ -388,8 +395,8 @@ class paper_plots:
         ax.set_aspect('equal', adjustable='box')
         ax.set_xlim([0,self.env.xlim])
         ax.set_ylim([0,self.env.ylim])
-        xticks = np.arange(0,self.env.xlim +25,25)
-        yticks = xticks.copy()
+        xticks = np.arange(0,self.env.xlim+15,30)
+        yticks = np.arange(0,self.env.ylim+15,30)
         ax.xaxis.set_ticks(xticks)
         ax.yaxis.set_ticks(yticks)
         ax.set_xticklabels(xticks, fontsize=tick_fs)

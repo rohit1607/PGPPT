@@ -10,7 +10,10 @@
             "request": "launch",
             "program": "${file}",
             "console": "integratedTerminal",
-            "justMyCode": true
+            "justMyCode": true,
+            // "args": ["--CFG", "v5_GPT_DG3", "--mode", "load_prev_and_test"],
+            "args": ["--CFG", "v5_DOLS", "--mode", "load_prev_and_test"],
+            "env": {"CUDA_VISIBLE_DEVICES": "1"}
         }
     ]
 }
