@@ -138,7 +138,7 @@ class paper_plots:
         vmax = max(path_lens + ip_path_lens)
         vmax = min(vmax, 119)
         vmax = int(100)
-        vmin = int(60)
+        vmin = int(89)
         # # vmax = 51
 
         # Make a user-defined colormap.
@@ -166,7 +166,7 @@ class paper_plots:
         #     # shape: (eval_batch_size, max_test_ep_len, state_dim)
         #     if t_done < 68:
             # ax.plot(states[0,:t_done+1,1], states[0,:t_done+1,2], color=sm.to_rgba(t_done))
-            ax.plot(states[:t_done,1], states[:t_done,2], color=sm.to_rgba(t_done))
+            ax.plot(states[:t_done,1], states[:t_done,2], color=sm.to_rgba(t_done), alpha=0.5)
 
         #         # ax.scatter(states[0,:t_done+1,1], states[0,:t_done+1,2], color=sm.to_rgba(t_done),s=1)
         pr_t_dones = []
@@ -182,7 +182,7 @@ class paper_plots:
             t_done = path_lens[idx] 
             if success_list[idx]:
                 # ax.scatter(states[:t_done,1], states[:t_done,2], color=sm.to_rgba(t_done), alpha=1, s=1 )
-                ax.plot(states[0,:t_done+1,1], states[0,:t_done+1,2], color=sm.to_rgba(t_done), alpha=1 )
+                ax.plot(states[0,:t_done+1,1], states[0,:t_done+1,2], color=sm.to_rgba(t_done), alpha=0.5 )
                 # ax.scatter(states[-1,1], states[-1,2], alpha=0.5, zorder=10000, s=5)
 
         summary = {}
@@ -247,7 +247,7 @@ class paper_plots:
             states = (states*std) + mean
             states = states*(traj_mask.reshape(-1,1))
 
-            ax.plot(states[:t_done,1], states[:t_done,2], color=sm.to_rgba(t_done), alpha=1 )
+            ax.plot(states[:t_done,1], states[:t_done,2], color=sm.to_rgba(t_done), alpha=0.5 )
             ax.scatter(states[-1,1], states[-1,2], alpha=0.5, zorder=10000, s=5)
 
         ax = axs[1]
@@ -261,7 +261,7 @@ class paper_plots:
             states = (states*std) + mean
             states = states*(traj_mask.reshape(-1,1))
 
-            ax.plot(states[:t_done,1], states[:t_done,2], color=sm.to_rgba(t_done), alpha=1 )
+            ax.plot(states[:t_done,1], states[:t_done,2], color=sm.to_rgba(t_done), alpha=0.5 )
             ax.scatter(states[-1,1], states[-1,2], alpha=0.5, zorder=10000, s=5)
 
         pr_t_dones = []
@@ -389,7 +389,7 @@ class paper_plots:
                             show_states=True,
                             show_xticks=True,
                             show_yticks=True,
-                            lab_fs = 15,
+                            lab_fs = 12,
                             tick_fs = 14,
                             ):
         ax.set_aspect('equal', adjustable='box')
