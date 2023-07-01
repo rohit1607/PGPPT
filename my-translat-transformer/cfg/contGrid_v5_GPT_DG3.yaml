@@ -3,7 +3,8 @@ state_dim: 3
 action_dim: 1
 action_range: [0, 6.28318]
 F: 1
-vel_field: "/home/rohit/Documents/Research/Planning_with_transformers/Translation_transformer/my-translat-transformer/data/GPT_dset_DG3/static_obs/GPTdset_DG3_g100x100x120_r5k_Obsv1_w5_1"
+# vel_field: "/home/rohit/Documents/Research/Planning_with_transformers/Translation_transformer/my-translat-transformer/data/GPT_dset_DG3/static_obs/GPTdset_DG3_g100x100x120_r5k_Obsv1_w5_1"
+vel_field: "/home/rohit/Documents/Research/Planning_with_transformers/Translation_transformer/my-translat-transformer/data/GPT_dset_DG3/static_obs/GPTdset_DG3_g100x100x120_r5k_Obsv1_25305"
 del_t: 1.
 scale_velocity: False
 vmax_by_F: 1
@@ -28,27 +29,31 @@ comp_val_loss: False
 translate_earlybreaks: [50, 200, 500]
 
 max_eval_ep_len: 120
-num_eval_ep: 200
-eval_inerval: 3
+num_eval_ep: 300
+eval_inerval: 10
 batch_size: 32
 
 optimizer_name: 'AdamW'
 lr: 0.001
-final_lr: 0.000001
+final_lr: 0.00005
 use_scheduler: True
 wt_decay: 0.001
 warmup_steps: 10000
-num_epochs: 200
+num_epochs: 300
 num_updates_per_iter: 500
 add_target_loss: False
 a_tl: 1000
 
 target_conditioning: False 
-num_encoder_layers: 2
-num_decoder_layers: 2
+num_encoder_layers: 4
+num_decoder_layers: 4
 context_len: 120
 embed_dim: 32
-n_heads: 2
+n_heads: 8
 dropout_p: 0.1
+
+# mlp_bc
+hidden_size: 128
+n_layers: 5
 
 device: 'cuda'

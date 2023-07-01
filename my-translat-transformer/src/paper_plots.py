@@ -121,14 +121,44 @@ class paper_plots:
         
     def DOLS_obstacle(self):
         s=15
-        return plt.Circle([4.5*s, 3*s], 0.5*s, color='k', alpha=0.3)
+        return plt.Circle([4.5*s, 3*s], 0.5*s, linewidth=1, edgecolor='k', facecolor='grey')
+    
+    def plot_velocity_obstacle(self):
+        fig, axs = plt.subplots(1, 2, sharey=True, figsize=(13,8))
+        vmax = int(78)
+        ax = axs[0]
+        self.setup_ax(ax)       
+        im = self.plot_vel_field(ax,t=vmax,r=9999)
+        # self.plot_obstacle(ax, xyw=xyw)
+        obstacle = self.DOLS_obstacle()
+        ax.add_patch(obstacle)
+
+        ax = axs[1] 
+        self.setup_ax(ax)
+        im = self.plot_vel_field(ax,t=vmax,r=9999)
+        # self.plot_obstacle(ax, xyw=xyw)
+        obstacle = self.DOLS_obstacle()
+        ax.add_patch(obstacle)
+
+        plt.subplots_adjust(left= 0.1, right=0.9, top=1, bottom=0.3, wspace=0.15, hspace=0.3)
+        # plt.subplots_adjust( left= 0.1, right=0.9, top=0.9, bottom=0.2, wspace=-0.05)
+        cax_vel = ax.inset_axes([1.05, -0.20, 0.05, 1.2])
+        # cax = ax.inset_axes([ax.get_position().x1,ax.get_position().y0,0.02,ax.get_position().y1-ax.get_position().y0])
+        cbar_fontsize = 15
+     
+        cbarv = fig.colorbar(im, ax=axs.ravel().tolist(), cax=cax_vel)
+        cbarv.set_label("Velocity Magnitude (non-dim)", fontsize=cbar_fontsize)        
+        fname='velocity'
+        save_name = join(self.save_dir,fname)
+        plt.savefig(save_name, bbox_inches='tight', dpi=600)
+
         
     def plot_val_ip_op(self, traj_dataset,
                        preds_list,
                        path_lens,
                        success_list,
                         at_time=None):
-        fig, axs = plt.subplots(1, 2, sharey=True, figsize=(10,40))
+        fig, axs = plt.subplots(1, 2, sharey=True, figsize=(13,8))
 
         info = self.paper_plot_info["plot_val_ip_op"]
         
@@ -137,8 +167,8 @@ class paper_plots:
         vmin = min(path_lens + ip_path_lens)
         vmax = max(path_lens + ip_path_lens)
         vmax = min(vmax, 119)
-        vmax = int(100)
-        vmin = int(89)
+        vmax = int(78)
+        vmin = int(72)
         # # vmax = 51
 
         # Make a user-defined colormap.
@@ -170,8 +200,8 @@ class paper_plots:
 
         #         # ax.scatter(states[0,:t_done+1,1], states[0,:t_done+1,2], color=sm.to_rgba(t_done),s=1)
         pr_t_dones = []
-        ax = axs[1]
-        self.setup_ax(ax, show_ylabel=False)
+        ax = axs[1] 
+        self.setup_ax(ax,show_ylabel=False)
         im = self.plot_vel_field(ax,t=vmax,r=9999)
         # self.plot_obstacle(ax, xyw=xyw)
         obstacle = self.DOLS_obstacle()
@@ -193,32 +223,141 @@ class paper_plots:
         summary["success rate"] = np.sum([int(item) for item in success_list])/len(success_list)
         summary["prediction count"] = len(success_list)
         print("------ SUMMARY-------\n", summary)
-        # cbar_fontsize = 12
-        # cbar = fig.colorbar(sm, ax=ax, ticks=[i for i in range(vmin, vmax+1)])
-        # cbar.set_label("Arrival Time (non-dim units)", fontsize=cbar_fontsize)
-        
-        # cbarv = fig.colorbar(im, ax=ax)
-        # cbarv.set_label("Velocity Magnitude", fontsize=cbar_fontsize)
-        
-        plt.subplots_adjust( left= 0.1, right=0.9, top=2, bottom=0.4, wspace=0.075, hspace=0.1)
 
-        cax_arr = ax.inset_axes([1.05, 0, 0.05, 1])
-        cax_vel = ax.inset_axes([1.30, 0, 0.05, 1])
-        cbar_fontsize = 10
+
+        plt.subplots_adjust(left= 0.1, right=0.9, top=1.1, bottom=0.4, wspace=0.1, hspace=0.3)
+ 
+        cax_arr = ax.inset_axes([1.05, -0.20, 0.05, 1.2])
+        cax_vel = ax.inset_axes([1.25, -0.20, 0.05, 1.2])
+        cbar_fontsize = 16
+
         cbar = fig.colorbar(sm, ax=axs.ravel().tolist(), cax=cax_arr)
         cbar.set_label("Arrival Time (non-dim)", fontsize=cbar_fontsize)
+        cbar.ax.tick_params(labelsize=13)
      
         cbarv = fig.colorbar(im, ax=axs.ravel().tolist(), cax=cax_vel)
         cbarv.set_label("Velocity Magnitude (non-dim)", fontsize=cbar_fontsize)
+        cbarv.ax.tick_params(labelsize=13)
 
+
+        fname = info["fname"] 
+        save_name = join(self.save_dir,fname)
+        # plt.figure(layout='constrained')
+        plt.savefig(save_name, bbox_inches='tight', dpi=600)
+        
+
+    def plot_trajs_ip_op(self, traj_dataset,
+                       preds_list,
+                       path_lens,
+                       success_list,
+                        at_time=None):
+        fig, axs = plt.subplots(1, 2, sharey=True, figsize=(13,8))
+
+        info = self.paper_plot_info["plot_trajs_ip_op"]
+        
+        ip_states_list =[item[3] for item in traj_dataset.dataset]
+        ip_path_lens = [len(item[2]) for item in traj_dataset.dataset] #item[2]
+        # vmin = min(path_lens + ip_path_lens)
+        # vmax = max(path_lens + ip_path_lens)
+        # vmax = min(vmax, 119)
+        vmax = int(78)
+        vmin = int(72)
+
+
+        ax = axs[0]
+        self.setup_ax(ax)       
+        im = self.plot_vel_field(ax,t=vmax,r=9999)
+        obstacle = self.DOLS_obstacle()
+        ax.add_patch(obstacle)
+        # traj_dataset=random.shuffle(traj_dataset)
+        color_dict = {}
+        for idx,traj in enumerate(ip_states_list):
+            states = ip_states_list[idx]
+            t_done = ip_path_lens[idx]
+                # if  (states[:,2][0][2] > 45):
+            if  (states[1][2] > 45):    
+                ax.plot(states[:t_done,1], states[:t_done,2], color='Green', alpha=1)
+                color_dict[str(idx)] = 'Green'
+            else:
+                ax.plot(states[:t_done,1], states[:t_done,2], color='Yellow', alpha=1)
+                color_dict[str(idx)] = 'Yellow'
+
+        ax = axs[1] 
+        self.setup_ax(ax,show_ylabel=False)
+        im = self.plot_vel_field(ax,t=vmax,r=9999)
+        # self.plot_obstacle(ax, xyw=xyw)
+        obstacle = self.DOLS_obstacle()
+        ax.add_patch(obstacle)
+
+        for idx, traj in enumerate(preds_list):
+            states = preds_list[idx]
+            t_done = path_lens[idx] 
+            if (success_list[idx]):
+                
+                ax.plot(states[0,:t_done+1,1], states[0,:t_done+1,2], color=color_dict[str(idx)], alpha=1 )
+                
+
+        summary = {}
+        summary["mean Tarr logged dataset"] = np.mean(ip_path_lens)
+        summary["std Tarr logged dataset"] = np.std(ip_path_lens)
+        summary["mean Tarr prediction" ] = np.mean(path_lens)
+        summary["std Tarr prediction" ] = np.std(path_lens)
+        summary["success rate"] = np.sum([int(item) for item in success_list])/len(success_list)
+        summary["prediction count"] = len(success_list)
+        print("------ SUMMARY-------\n", summary)
+
+        
+        plt.subplots_adjust(left= 0.1, right=0.9, top=1.1, bottom=0.4, wspace=0.1, hspace=0.3)
+
+        cax_vel = ax.inset_axes([1.05, -0.20, 0.05, 1.2])
+
+        cbar_fontsize = 16
+     
+        cbarv = fig.colorbar(im, ax=axs.ravel().tolist(), cax=cax_vel)
+        cbarv.set_label("Velocity Magnitude (non-dim)", fontsize=cbar_fontsize)
+        cbarv.ax.tick_params(labelsize=13)
 
         fname = info["fname"] 
         save_name = join(self.save_dir,fname)
         plt.savefig(save_name, bbox_inches = 'tight', dpi=600)
 
+    def plot_actions(self, traj_dataset,
+                       preds_list,
+                       path_lens,
+                       success_list,
+                       actions,
+                        at_time=None):
+        fig, axs = plt.subplots(1, 2, sharey=True, figsize=(13,8))
+
+        info = self.paper_plot_info["plot_actions"]
+        
+        ip_actions_list = [item[1] for item in traj_dataset]
+        vmax = int(78)
+        ax = axs[0]
+        # self.setup_ax(ax)       
+        # im = self.plot_vel_field(ax,t=vmax,r=9999)
+        # obstacle = self.DOLS_obstacle()
+        # ax.add_patch(obstacle)
+        ax.plot(ip_actions_list[0])
+ 
+
+        ax = axs[1] 
+        # self.setup_ax(ax,show_ylabel=False)
+        # im = self.plot_vel_field(ax,t=vmax,r=9999)
+        # # self.plot_obstacle(ax, xyw=xyw)
+        # obstacle = self.DOLS_obstacle()
+        # ax.add_patch(obstacle)
+
+        ax.plot(actions[0][0])
+        
+        fname = info["fname"] 
+        save_name = join(self.save_dir,fname)
+        plt.savefig(save_name, bbox_inches = 'tight', dpi=600)        
+        
+
     def plot_train_val_ip_op(self, tr_traj_dataset, val_traj_dataset,
                             at_time=None):
-        fig, axs = plt.subplots(1, 3, sharey=True, figsize=(15,5))
+        fig, axs = plt.subplots(1, 3, sharey=False, sharex=True, figsize=(15,5))
 
         info = self.paper_plot_info["plot_train_val_ip_op"]
         t_dones = []
@@ -248,7 +387,7 @@ class paper_plots:
             states = states*(traj_mask.reshape(-1,1))
 
             ax.plot(states[:t_done,1], states[:t_done,2], color=sm.to_rgba(t_done), alpha=0.5 )
-            ax.scatter(states[-1,1], states[-1,2], alpha=0.5, zorder=10000, s=5)
+            ax.scatter(states[-1,1], states[-1,2], alpha=0.5, zorder=20000, s=5)
 
         ax = axs[1]
         self.setup_ax(ax)       
@@ -262,7 +401,7 @@ class paper_plots:
             states = states*(traj_mask.reshape(-1,1))
 
             ax.plot(states[:t_done,1], states[:t_done,2], color=sm.to_rgba(t_done), alpha=0.5 )
-            ax.scatter(states[-1,1], states[-1,2], alpha=0.5, zorder=10000, s=5)
+            ax.scatter(states[-1,1], states[-1,2], alpha=0.5, zorder=20000, s=5)
 
         pr_t_dones = []
         ax = axs[2]
@@ -389,13 +528,13 @@ class paper_plots:
                             show_states=True,
                             show_xticks=True,
                             show_yticks=True,
-                            lab_fs = 12,
+                            lab_fs = 15,
                             tick_fs = 14,
                             ):
         ax.set_aspect('equal', adjustable='box')
-        ax.set_xlim([0,self.env.xlim])
+        ax.set_xlim([0,self.env.xlim-60])
         ax.set_ylim([0,self.env.ylim])
-        xticks = np.arange(0,self.env.xlim+15,30)
+        xticks = np.arange(0,(self.env.xlim-60)+15,30)
         yticks = np.arange(0,self.env.ylim+15,30)
         ax.xaxis.set_ticks(xticks)
         ax.yaxis.set_ticks(yticks)
@@ -424,16 +563,16 @@ class paper_plots:
         if show_ylabel:
             ax.set_ylabel(ylabel,fontsize=lab_fs)
         if show_states:
-            ax.scatter(self.env.start_pos[0], self.env.start_pos[1], color='k', marker='o')
+            ax.scatter(self.env.start_pos[0], self.env.start_pos[1], color='k', marker='o',zorder=20000)
         
             if self.env.target_pos.ndim == 1:
-                ax.scatter(self.env.target_pos[0], self.env.target_pos[1], color='k', marker='*')
-                target_circle = plt.Circle(self.env.target_pos, self.env.target_rad, color='r', alpha=0.3)
+                ax.scatter(self.env.target_pos[0], self.env.target_pos[1], color='k', marker='*',zorder=40000)
+                target_circle = plt.Circle(self.env.target_pos, self.env.target_rad, color='r', alpha=0.5,zorder=20000)
                 ax.add_patch(target_circle)
             elif self.env.target_pos.ndim > 1:
                 for target_pos in self.env.target_pos:
-                    ax.scatter(target_pos[0], target_pos[1], color='k', marker='*')
-                    target_circle = plt.Circle(target_pos, self.env.target_rad, color='r', alpha=0.3)
+                    ax.scatter(target_pos[0], target_pos[1], color='k', marker='*',zorder=40000)
+                    target_circle = plt.Circle(target_pos, self.env.target_rad, color='r', alpha=0.5,zorder=20000)
                     ax.add_patch(target_circle)
 
 

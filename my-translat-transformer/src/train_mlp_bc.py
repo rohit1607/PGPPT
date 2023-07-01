@@ -8,7 +8,7 @@ from src_utils import create_action_dataset_v2, compare_trajectories, viz_op_tra
 from src_utils import get_data_split, create_mask, denormalize, visualize_output, visualize_input
 from src_utils import see_steplr_trend, simulate_tgt_actions, plot_attention_weights
 from utils import read_cfg_file, save_yaml, load_pkl, print_dict, save_object
-from custom_models import mySeq2SeqTransformer_v1
+from custom_models2 import MLPBCModel
 
 import gym
 import gym_examples
@@ -44,52 +44,6 @@ def setup_env(flow_dir):
     env.setup(flow_specific_cfg, params2, add_trans_noise=False)
     return env
 
-def extract_attention_scores(model):
-    enc_sa_arr = np.array([layer.enc_avg_att_scores.cpu().detach().numpy() for layer in model.transformer.encoder.layers])
-    dec_sa_arr = np.array([layer.dec_avg_att_scores.cpu().detach().numpy() for layer in model.transformer.decoder.layers])
-    dec_ga_arr = np.array([layer.dec_avg_cross_att_scores.cpu().detach().numpy() for layer in model.transformer.decoder.layers])
-
-    return enc_sa_arr , dec_sa_arr, dec_ga_arr 
-
-def plot_all_attention_mats(all_att_mats, log_wandb=True, model_name=''):
-    enc_sa_arr , dec_sa_arr, dec_ga_arr = all_att_mats
-    save_path = "/home/rohit/Documents/Research/Planning_with_transformers/Translation_transformer/my-translat-transformer/tmp/last_exp_figs"
-
-    plot_attention_weights(enc_sa_arr, 
-                            layer_idx=0,
-                            set_idx=0, 
-                            average_across_layers=True,
-                            scale_each_row=True, 
-                            causal_mask_used=False,
-                            log_wandb = log_wandb,
-                            fname=join(save_path,'attention_heatmap_'+model_name),
-                            info_string = 'enc_sa',
-                            wandb_fname = 'enc_sa'   
-                            )
-    plot_attention_weights(dec_sa_arr, 
-                            layer_idx=0,
-                            set_idx=0, 
-                            average_across_layers=True,
-                            scale_each_row=True, 
-                            causal_mask_used=True,
-                            log_wandb = log_wandb,
-                            fname=join(save_path,'attention_heatmap'+model_name),
-                            info_string = 'dec_sa',
-                            wandb_fname = 'dec_sa'                 
-                            )
-    plot_attention_weights(dec_ga_arr, 
-                            layer_idx=0,
-                            set_idx=0, 
-                            average_across_layers=True,
-                            scale_each_row=True, 
-                            causal_mask_used=False,
-                            log_wandb = log_wandb,
-                            fname=join(save_path,'attention_heatmap'+model_name),
-                            info_string = 'dec_ga',
-                            wandb_fname = 'dec_ga'                 
-                            )
-    
-    return 
 
 def train_epoch(model, optimizer, tr_set, cfg, args, scheduler=None, log_interval=50):
     model.train()
@@ -102,35 +56,40 @@ def train_epoch(model, optimizer, tr_set, cfg, args, scheduler=None, log_interva
     # for env_coef_seq, tgt in train_dataloader:
     for timesteps, tgt, traj_mask, target_state, env_coef_seq, traj_len, idx, _, _ in train_dataloader:
         timesteps = timesteps.to(cfg.device)
-        src = env_coef_seq.to(cfg.device)
+        src = env_coef_seq.to(torch.float32).to(cfg.device)
         tgt = tgt.to(cfg.device)
 
         tgt_input = tgt[:, :-1, :]
         tgt_padding_mask = traj_mask.to(cfg.device)
         src_mask, tgt_mask, src_padding_mask, _ = create_mask(src, tgt_input, traj_len, cfg.device)
 
-        logits = model(src, tgt_input, src_mask, tgt_mask, src_padding_mask, tgt_padding_mask, src_padding_mask, timesteps)
+        # logits = model(src, tgt_input, src_mask, tgt_mask, src_padding_mask, tgt_padding_mask, src_padding_mask, timesteps)
+      
+        logits = model(src)
 
-        tgt_out = tgt[:, 1:, :]
+        # tgt_out = tgt[:, 1:, :]
         mask_for_loss = torch.clone(tgt_padding_mask).to(cfg.device)
         mask_for_loss[:,:-1] = ~tgt_padding_mask[:,1:]
         mask_for_loss[:,-1] = tgt_padding_mask[:,0]
         # mask_for_loss = torch.cat([~tgt_padding_mask[:,1:],tgt_padding_mask[:,0]])
        
-        # only consider non padded elements (except one at the end)
-        logits_ =  logits.view(-1,1)[(~tgt_padding_mask).view(-1,)]
-        tgt_out_ = tgt_out.reshape(-1,1)[(~tgt_padding_mask).view(-1,)]
+        # # only consider non padded elements (except one at the end)
+        # logits_ =  logits.view(-1,1)[(~tgt_padding_mask).view(-1,)]
+        # tgt_input_ = tgt_input.reshape(-1,1)[(~tgt_padding_mask).view(-1,)]
+
+        # tgt_out_ = tgt_out.reshape(-1,1)[(~tgt_padding_mask).view(-1,)]
 
         # only considers purely non-padded elements in predictions
         logits =  logits.view(-1,1)[mask_for_loss.view(-1,)]
-        tgt_out = tgt_out.reshape(-1,1)[mask_for_loss.view(-1,)]
+        tgt_input = tgt_input.reshape(-1,1)[mask_for_loss.view(-1,)]
+        # tgt_out = tgt_out.reshape(-1,1)[mask_for_loss.view(-1,)]
         # Consider all elements across context length
         # logits =  logits.view(-1,1)
         # tgt_out = tgt_out.reshape(-1,1)
         # loss = loss_fn(logits.reshape(-1, logits.shape[-1]), tgt_out.reshape(-1))
         
         # TODO: restrict output to 0-6 or 0-1 if scaled 
-        loss = F.mse_loss(logits, tgt_out)
+        loss = F.mse_loss(logits, tgt_input)
         optimizer.zero_grad()
 
         loss.backward()
@@ -155,8 +114,8 @@ def train_epoch(model, optimizer, tr_set, cfg, args, scheduler=None, log_interva
                        })
         count += 1
 
-    all_att_mats = extract_attention_scores(model)
-    return avg_loss, all_att_mats
+    # all_att_mats = extract_attention_scores(model)
+    return avg_loss, None
 
 
 def evaluate(model, val_set, cfg, log_interval=10):
@@ -169,32 +128,33 @@ def evaluate(model, val_set, cfg, log_interval=10):
     count=  0
     for timesteps, tgt, traj_mask, target_state, env_coef_seq, traj_len, idx, _, _ in val_dataloader:
         timesteps = timesteps.to(cfg.device)
-        src = env_coef_seq.to(cfg.device)
+        src = env_coef_seq.to(torch.float32).to(cfg.device)
         tgt = tgt.to(cfg.device)
         tgt_input = tgt[:, :-1, :]
         tgt_padding_mask = traj_mask.to(cfg.device)
         src_mask, tgt_mask, src_padding_mask, _ = create_mask(src, tgt_input, traj_len, cfg.device)
 
-        logits = model(src, tgt_input, src_mask, tgt_mask, src_padding_mask, tgt_padding_mask, src_padding_mask,timesteps)
+        logits = model(src)
         
-        tgt_out = tgt[:, 1:, :]
+        # tgt_out = tgt[:, 1:, :]
         mask_for_loss = torch.clone(tgt_padding_mask).to(cfg.device)
         mask_for_loss[:,:-1] = ~tgt_padding_mask[:,1:]
         mask_for_loss[:,-1] = tgt_padding_mask[:,0]
         # mask_for_loss = torch.cat([~tgt_padding_mask[:,1:],tgt_padding_mask[:,0]])
        
-        # only consider non padded elements (except one at the end)
-        logits_ =  logits.view(-1,1)[(~tgt_padding_mask).view(-1,)]
-        tgt_out_ = tgt_out.reshape(-1,1)[(~tgt_padding_mask).view(-1,)]
+        # # only consider non padded elements (except one at the end)
+        # logits_ =  logits.view(-1,1)[(~tgt_padding_mask).view(-1,)]
+        # tgt_out_ = tgt_out.reshape(-1,1)[(~tgt_padding_mask).view(-1,)]
 
         # only considers purely non-padded elements in predictions
         logits =  logits.view(-1,1)[mask_for_loss.view(-1,)]
-        tgt_out = tgt_out.reshape(-1,1)[mask_for_loss.view(-1,)]
+        # tgt_out = tgt_out.reshape(-1,1)[mask_for_loss.view(-1,)]
+        tgt_input = tgt_input.reshape(-1,1)[mask_for_loss.view(-1,)]
 
         # logits =  logits.view(-1,1)[(~tgt_padding_mask).view(-1,)]
         # tgt_out = tgt_out.reshape(-1,1)[(~tgt_padding_mask).view(-1,)]
         # loss = loss_fn(logits.reshape(-1, logits.shape[-1]), tgt_out.reshape(-1))
-        loss = F.mse_loss(logits, tgt_out)
+        loss = F.mse_loss(logits, tgt_input)
         
         # losses += loss.item()
         avg_loss = avg_loss + ((loss.item() - avg_loss)/(count+1))
@@ -202,8 +162,8 @@ def evaluate(model, val_set, cfg, log_interval=10):
             wandb.log({f"in_eval/avg_val_loss vs log_intervalth update": avg_loss})
         count += 1
 
-    all_att_mats = extract_attention_scores(model)
-    return avg_loss, all_att_mats
+    # all_att_mats = extract_attention_scores(model)
+    return avg_loss, None
 
 
 def translate(model: torch.nn.Module, test_idx, test_set, tr_set_stats, cfg, earlybreak=10**8):
@@ -244,11 +204,15 @@ def translate(model: torch.nn.Module, test_idx, test_set, tr_set_stats, cfg, ear
             count += 1
             if count == earlybreak:
                 break
-            src = env_coef_seq.to(cfg.device)
+            src = env_coef_seq.to(torch.float32).to(cfg.device)
             dummy_tgt_for_mask = tgt.to(cfg.device)[:, :-1, :]
             src_mask, tgt_mask, src_padding_mask, _ = create_mask(src, dummy_tgt_for_mask, traj_len, cfg.device)
-            # memory is the encoder output
-            memory =  model.encode(src, src_mask, timesteps)
+           
+            timesteps = timesteps.to(cfg.device)
+
+            logits = model(src)
+           
+
 
             preds = torch.zeros((1, cfg.context_len, dummy_tgt_for_mask.shape[2]),dtype=torch.float32, device=cfg.device)
             PREDS_ = torch.zeros((1, cfg.context_len, dummy_tgt_for_mask.shape[2]),dtype=torch.float32, device=cfg.device)
@@ -259,19 +223,17 @@ def translate(model: torch.nn.Module, test_idx, test_set, tr_set_stats, cfg, ear
             txy_preds[0,0,:] = np.array([0,env.start_pos[0],env.start_pos[1]])
             # TXY_PREDS_[0,0,:] = np.array([0,ENV_.start_pos[0],ENV_.start_pos[1]])
             # TODO: Change. Put in SOS token
-            preds[0,0,:] = tgt[0,0,:]
+            # preds[0,0,:] = logit[0,0,:]
+            preds = logits.cpu().numpy().copy()
             # PREDS_[0,0,:] = tgt[0,0,:]
-            a = preds[0,0,:].cpu().numpy().copy()
+            a = preds[0,0,:]
             a = a*2*np.pi
             txy, reward ,done, info = env.step(a)
-            txy_preds[0,1,:] = txy     
+            txy_preds[0,1,:] = txy
 
             for i in range(cfg.context_len-1):
-                memory = memory.to(cfg.device)
-                out = model.decode(preds, memory, tgt_mask, timesteps)
-                gen = model.generator(out)
-                preds[0,i+1,:] = gen[0,i,:].detach()
-                a = preds[0,i+1,:].cpu().numpy().copy()
+
+                a = preds[0,i+1,:]
                 a = a*2*np.pi
                 txy, reward ,done, info = env.step(a)
                 txy_preds[0,i+2,:] = txy 
@@ -304,17 +266,17 @@ def translate(model: torch.nn.Module, test_idx, test_set, tr_set_stats, cfg, ear
             #         break
             k = 0
             # loss = loss_fn(logits.reshape(-1, logits.shape[-1]), tgt_out.reshape(-1))
-            mse = F.mse_loss(preds[0,:i].cpu(),tgt[0,:i].cpu())
+            mse =  np.square(np.subtract(preds[0,:i],tgt[0,:i])).mean()
             # print(f"rough mse for sample {count} = {mse}")
 
             op_traj_dict['states'] = np.array(txy_preds)
-            op_traj_dict['actions'] = preds.cpu()*2*np.pi
+            op_traj_dict['actions'] = preds*2*np.pi
             op_traj_dict['t_done'] = i+3
             op_traj_dict['n_tsteps'] = i+2
             # op_traj_dict['attention_weights'] = attention_weights
             op_traj_dict['success'] = reached_target
             op_traj_dict['mse'] = mse
-            op_traj_dict['all_att_mat'] = extract_attention_scores(model)
+            # op_traj_dict['all_att_mat'] = extract_attention_scores(model)
             # op_traj_dict['states_for_action_labels'] = np.array(TXY_PREDS_)
             op_traj_dict['states_for_action_labels'] = None
             op_traj_dict['action_labels'] = tgt.cpu()*2*np.pi
@@ -353,7 +315,7 @@ def train_model(args=None, cfg_name=None):
 
 
     wandb_exp_name = "env2a_" + dataset_name + "__" + start_time_str
-    wandb.init(project="translation-transformer",
+    wandb.init(project="translation-mlp_bc_model",
         name = wandb_exp_name,
         config=config
         )
@@ -404,6 +366,10 @@ def train_model(args=None, cfg_name=None):
     # training and evaluation device
     device = torch.device(cfg.device)
     
+    
+    # mlp args
+    hidden_size = cfg.hidden_size
+    n_layers = cfg.n_layers
 
     if ARGS_QR:
         print("\n ---------- Modifying cfg params for quick run --------------- \n")
@@ -470,33 +436,38 @@ def train_model(args=None, cfg_name=None):
     print(f"src_vec_dim = {src_vec_dim} \n tgt_vec_dim = {tgt_vec_dim}")
     # intantiate gym env for vizualization purposes
     env_4_viz = setup_env(dummy_flow_dir)
-    break_at = 100
-    visualize_input(tr_set, log_wandb=True, at_time=99, env=env_4_viz, break_at=break_at)
-    simulate_tgt_actions(tr_set,
-                            env=env_4_viz,
-                            log_wandb=True,
-                            wandb_fname='simulate_tgt_actions',
-                            plot_flow=True,
-                            at_time=100,
-                            break_at=break_at)
+
+    # visualize_input(tr_set, log_wandb=True, at_time=99, env=env_4_viz)
+    # simulate_tgt_actions(tr_set,
+    #                         env=env_4_viz,
+    #                         log_wandb=True,
+    #                         wandb_fname='simulate_tgt_actions',
+    #                         plot_flow=True,
+    #                         at_time=100)
     
-    transformer = mySeq2SeqTransformer_v1(num_encoder_layers, num_decoder_layers, embed_dim,
-                                 n_heads, src_vec_dim, tgt_vec_dim, 
-                                 dim_feedforward=None,     # TODO: add dim_ffn to cfg
-                                 max_len=context_len,
-                                 positional_encoding="simple"
-                                 ).to(cfg.device)
+    # transformer = mySeq2SeqTransformer_v1(num_encoder_layers, num_decoder_layers, embed_dim,
+    #                              n_heads, src_vec_dim, tgt_vec_dim, 
+    #                              dim_feedforward=None,     # TODO: add dim_ffn to cfg
+    #                              max_len=context_len,
+    #                              positional_encoding="simple"
+    #                              ).to(cfg.device)
     
+    mlp_bc_model = MLPBCModel(src_vec_dim, tgt_vec_dim, 
+                              hidden_size, 
+                              n_layers,
+                              max_length=context_len,
+                              dropout=dropout_p
+                              ).to(cfg.device)
  
     
     if optimizer_name == 'AdamW':
         optimizer = torch.optim.AdamW(
-                        transformer.parameters(),
+                        mlp_bc_model.parameters(),
                         lr=lr,
                         weight_decay=wt_decay
                     )
     elif optimizer_name == 'Adam':
-        optimizer = torch.optim.Adam(transformer.parameters(), 
+        optimizer = torch.optim.Adam(mlp_bc_model.parameters(), 
                                     lr=lr, 
                                     weight_decay=wt_decay,
                                     betas=(0.9, 0.98), 
@@ -518,8 +489,8 @@ def train_model(args=None, cfg_name=None):
                                                       schedulers=[warm_up_scheduler, main_lr_scheduler],
                                                       milestones=[3])
 
-    pytorch_trainable_params = sum(p.numel() for p in transformer.parameters() if p.requires_grad)
-    pytorch_total_params = sum(p.numel() for p in transformer.parameters())
+    pytorch_trainable_params = sum(p.numel() for p in mlp_bc_model.parameters() if p.requires_grad)
+    pytorch_total_params = sum(p.numel() for p in mlp_bc_model.parameters())
     print(f"total params = {pytorch_total_params}")
     print(f"trainable params = {pytorch_trainable_params}")
     wandb.run.summary["total params"] = pytorch_total_params
@@ -534,10 +505,10 @@ def train_model(args=None, cfg_name=None):
         print(f"epoch {epoch}")
         epoch_start_time = timer()
         print("training")
-        train_loss, tr_all_att_mat = train_epoch(transformer, optimizer, tr_set, cfg, args, scheduler=scheduler)
+        train_loss, tr_all_att_mat = train_epoch(mlp_bc_model, optimizer, tr_set, cfg, args, scheduler=scheduler)
         epoch_end_time = timer()
         print("evaluating")
-        val_loss, val_all_att_mat = evaluate(transformer, val_set, cfg)
+        val_loss, val_all_att_mat = evaluate(mlp_bc_model, val_set, cfg)
         scheduler.step()
         wandb.log({f"in_eval/lr":  scheduler.get_last_lr()[0]
                        })
@@ -545,14 +516,14 @@ def train_model(args=None, cfg_name=None):
         # Evalutation by translation   
         if epoch % eval_inerval == 0:
             print("plotting attention")
-            plot_all_attention_mats(tr_all_att_mat)
-            plot_all_attention_mats(val_all_att_mat)
+            # plot_all_attention_mats(tr_all_att_mat)
+            # plot_all_attention_mats(val_all_att_mat)
             print("translating")
-            tr_op_traj_dict_list, tr_results = translate(transformer, train_idx_set, tr_set, None, 
+            tr_op_traj_dict_list, tr_results = translate(mlp_bc_model, train_idx_set, tr_set, None, 
                                                    cfg, earlybreak=tt_eb[0])
             
             tr_set_txy_preds = [d['states'] for d in tr_op_traj_dict_list]
-            all_att_mat_list =  [d['all_att_mat'] for d in tr_op_traj_dict_list]
+            # all_att_mat_list =  [d['all_att_mat'] for d in tr_op_traj_dict_list]
 
             # tr_set_txy_PREDS_ = [d['states_for_action_labels'] for d in tr_op_traj_dict_list]
 
@@ -586,24 +557,24 @@ def train_model(args=None, cfg_name=None):
             #                     wandb_suffix="train")   
             
       
-            viz_op_traj_with_attention(tr_set_txy_preds,
-                                all_att_mat_list, # could be enc_sa, dec_sa, dec_ga
-                                path_lens,
-                                mode='dec_sa',       #or 'a_s_attention'
-                                average_across_layers=True,
-                                stats=None, 
-                                env=env_4_viz, 
-                                log_wandb=True, 
-                                scale_each_row=True,
-                                plot_policy=False,
-                                traj_idx=None,      #None=all, list of rzn_ids []
-                                show_scatter=False,
-                                plot_flow=True,
-                                at_time=88,
-                                model_name="DOLS"+"_on_"+dataset_name
-                                )  
+            # viz_op_traj_with_attention(tr_set_txy_preds,
+            #                     all_att_mat_list, # could be enc_sa, dec_sa, dec_ga
+            #                     path_lens,
+            #                     mode='dec_sa',       #or 'a_s_attention'
+            #                     average_across_layers=True,
+            #                     stats=None, 
+            #                     env=env_4_viz, 
+            #                     log_wandb=True, 
+            #                     scale_each_row=True,
+            #                     plot_policy=False,
+            #                     traj_idx=None,      #None=all, list of rzn_ids []
+            #                     show_scatter=False,
+            #                     plot_flow=True,
+            #                     at_time=88,
+            #                     model_name="DOLS"+"_on_"+dataset_name
+            #                     )  
                         
-            val_op_traj_dict_list, val_results = translate(transformer, val_idx_set, val_set, None, 
+            val_op_traj_dict_list, val_results = translate(mlp_bc_model, val_idx_set, val_set, None, 
                                                            cfg, earlybreak=tt_eb[1])
             val_set_txy_preds = [d['states'] for d in val_op_traj_dict_list]
             path_lens = [d['n_tsteps'] for d in val_op_traj_dict_list]
@@ -661,9 +632,9 @@ def train_model(args=None, cfg_name=None):
             best_epoch = epoch
             # "avg_val_loss"= eval_avg_val_loss
 
-            torch.save(transformer, save_model_path)
+            torch.save(mlp_bc_model, save_model_path)
             tmp_path = save_model_path[:-1]
-            torch.save(transformer, tmp_path)
+            torch.save(mlp_bc_model, tmp_path)
 
 
     cfg_copy_path = save_model_path[:-2] + "yml"
@@ -679,8 +650,8 @@ def train_model(args=None, cfg_name=None):
     print("=" * 60)
 
     print(f"\n\n ---- running inference on test set ----- \n\n")
-    transformer = torch.load(tmp_path)
-    op_traj_dict_list, results  = translate(transformer,test_idx_set, test_set, 
+    mlp_bc_model = torch.load(tmp_path)
+    op_traj_dict_list, results  = translate(mlp_bc_model,test_idx_set, test_set, 
                                             None, cfg, earlybreak=tt_eb[2])
     test_set_txy_preds = [d['states'] for d in op_traj_dict_list]
     path_lens = [d['n_tsteps'] for d in op_traj_dict_list]  
@@ -713,15 +684,14 @@ class jugaad_cfg:
         self.context_len = context_len
         self.device = device
 
+
 def load_prev_and_test(args, cfg_name):
-
-
 
     # load model
     # tmp_path = ROOT + "log/my_translat_GPTdset_DG3_model_04-01-03-20.pt"
-    # ROOT = /home/rohit/Documents/Research/Planning_with_transformers/Translation_transformer/my-translat-transformer/
-    tmp_path = ROOT + "log/my_translat_DOLS_Cylinder_model_06-21-14-57.pt" 
-    transformer = torch.load(tmp_path)
+    # ROOT = /home/rohit/Documents/Research/Planning_with_mlp_bc_models/Translation_mlp_bc_model/my-translat-transformer/
+    tmp_path = ROOT + "log/my_translat_DOLS_Cylinder_model_06-30-21-21.pt" 
+    mlp_bc_model = torch.load(tmp_path)
     model_name = tmp_path[:-3].split('/')[-1]
     # load unseen dataset
     targ = '5'
@@ -767,7 +737,7 @@ def load_prev_and_test(args, cfg_name):
     # translate_start_time = timer()
 
 
-    op_traj_dict_list, results = translate(transformer,us_test_idx_set, us_test_traj_set, 
+    op_traj_dict_list, results = translate(mlp_bc_model,us_test_idx_set, us_test_traj_set, 
                                             None, cfg, earlybreak=500)
     # translate_end_time = timer()
     # print(f"Translate runtime = {(translate_end_time - translate_start_time):.3f}s")
@@ -784,13 +754,13 @@ def load_prev_and_test(args, cfg_name):
 
     test_set_txy_preds = [d['states'] for d in op_traj_dict_list]
     path_lens = [d['n_tsteps'] for d in op_traj_dict_list]
-    all_att_mat_list =  [d['all_att_mat'] for d in op_traj_dict_list]
+    # all_att_mat_list =  [d['all_att_mat'] for d in op_traj_dict_list]
     success_list = [d['success'] for d in op_traj_dict_list]
     actions = [d['actions'] for d in op_traj_dict_list]
     
     # taken from vis_traj_with_attention.py in decision transformer project
     print(f"model_name = {model_name}")
-    save_dir = "paper_plots/"  + model_name + f"/DOLS_targ_{targ}/increased_cbar"
+    save_dir = "paper_plots/"  + model_name + f"/DOLS_targ_{targ}/mlp_bc"
     save_dir = join(ROOT,save_dir)
     if not os.path.exists(save_dir):
         os.mkdir(save_dir)
@@ -901,7 +871,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument('--mode', type=str, default='single_run')
     parser.add_argument('--quick_run', type=bool, default=False)
-    parser.add_argument('--CFG', type=str, default='v5_DOLS')
+    parser.add_argument('--CFG', type=str, default='v5_GPT_DG3')
     args = parser.parse_args()
 
     cfg_name = "cfg/contGrid_" + args.CFG

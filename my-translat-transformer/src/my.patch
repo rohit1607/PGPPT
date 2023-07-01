@@ -1,0 +1,420 @@
+diff --git a/my-translat-transformer/.vscode/launch.json b/my-translat-transformer/.vscode/launch.json
+index 306f58e..04efa4f 100644
+--- a/my-translat-transformer/.vscode/launch.json
++++ b/my-translat-transformer/.vscode/launch.json
+@@ -10,7 +10,10 @@
+             "request": "launch",
+             "program": "${file}",
+             "console": "integratedTerminal",
+-            "justMyCode": true
++            "justMyCode": true,
++            // "args": ["--CFG", "v5_GPT_DG3", "--mode", "load_prev_and_test"],
++            "args": ["--CFG", "v5_DOLS", "--mode", "load_prev_and_test"],
++            "env": {"CUDA_VISIBLE_DEVICES": "1"}
+         }
+     ]
+ }
+\ No newline at end of file
+diff --git a/my-translat-transformer/src/paper_plots.py b/my-translat-transformer/src/paper_plots.py
+index 42c3d17..c8e0f29 100644
+--- a/my-translat-transformer/src/paper_plots.py
++++ b/my-translat-transformer/src/paper_plots.py
+@@ -119,13 +119,16 @@ class paper_plots:
+         ax.add_patch(rect)
+         return
+         
++    def DOLS_obstacle(self):
++        s=15
++        return plt.Circle([4.5*s, 3*s], 0.5*s, color='k', alpha=0.3)
+         
+     def plot_val_ip_op(self, traj_dataset,
+                        preds_list,
+                        path_lens,
+                        success_list,
+                         at_time=None):
+-        fig, axs = plt.subplots(1, 2, sharey=True, figsize=(10,5))
++        fig, axs = plt.subplots(1, 2, sharey=True, figsize=(10,40))
+ 
+         info = self.paper_plot_info["plot_val_ip_op"]
+         
+@@ -135,7 +138,7 @@ class paper_plots:
+         vmax = max(path_lens + ip_path_lens)
+         vmax = min(vmax, 119)
+         vmax = int(100)
+-        vmin = int(60)
++        vmin = int(89)
+         # # vmax = 51
+ 
+         # Make a user-defined colormap.
+@@ -149,8 +152,10 @@ class paper_plots:
+ 
+         ax = axs[0]
+         self.setup_ax(ax)       
+-        im = self.plot_vel_field(ax,t=vmax,r=199)
+-        self.plot_obstacle(ax, xyw=xyw)
++        im = self.plot_vel_field(ax,t=vmax,r=9999)
++        # self.plot_obstacle(ax, xyw=xyw)
++        obstacle = self.DOLS_obstacle()
++        ax.add_patch(obstacle)
+         # traj_dataset=random.shuffle(traj_dataset)
+ 
+         for idx,traj in enumerate(ip_states_list):
+@@ -161,21 +166,23 @@ class paper_plots:
+         #     # shape: (eval_batch_size, max_test_ep_len, state_dim)
+         #     if t_done < 68:
+             # ax.plot(states[0,:t_done+1,1], states[0,:t_done+1,2], color=sm.to_rgba(t_done))
+-            ax.plot(states[:t_done,1], states[:t_done,2], color=sm.to_rgba(t_done))
++            ax.plot(states[:t_done,1], states[:t_done,2], color=sm.to_rgba(t_done), alpha=0.5)
+ 
+         #         # ax.scatter(states[0,:t_done+1,1], states[0,:t_done+1,2], color=sm.to_rgba(t_done),s=1)
+         pr_t_dones = []
+         ax = axs[1]
+         self.setup_ax(ax, show_ylabel=False)
+-        im = self.plot_vel_field(ax,t=vmax,r=199)
+-        self.plot_obstacle(ax, xyw=xyw)
++        im = self.plot_vel_field(ax,t=vmax,r=9999)
++        # self.plot_obstacle(ax, xyw=xyw)
++        obstacle = self.DOLS_obstacle()
++        ax.add_patch(obstacle)
+ 
+         for idx, traj in enumerate(preds_list[:1500]):
+             states = preds_list[idx]
+             t_done = path_lens[idx] 
+             if success_list[idx]:
+                 # ax.scatter(states[:t_done,1], states[:t_done,2], color=sm.to_rgba(t_done), alpha=1, s=1 )
+-                ax.plot(states[0,:t_done+1,1], states[0,:t_done+1,2], color=sm.to_rgba(t_done), alpha=1 )
++                ax.plot(states[0,:t_done+1,1], states[0,:t_done+1,2], color=sm.to_rgba(t_done), alpha=0.5 )
+                 # ax.scatter(states[-1,1], states[-1,2], alpha=0.5, zorder=10000, s=5)
+ 
+         summary = {}
+@@ -193,11 +200,11 @@ class paper_plots:
+         # cbarv = fig.colorbar(im, ax=ax)
+         # cbarv.set_label("Velocity Magnitude", fontsize=cbar_fontsize)
+         
+-        plt.subplots_adjust( left= 0.1, right=0.9, top=0.9, bottom=0.2, wspace=-0.05)
++        plt.subplots_adjust( left= 0.1, right=0.9, top=2, bottom=0.4, wspace=0.075, hspace=0.1)
+ 
+         cax_arr = ax.inset_axes([1.05, 0, 0.05, 1])
+         cax_vel = ax.inset_axes([1.30, 0, 0.05, 1])
+-        cbar_fontsize = 15
++        cbar_fontsize = 10
+         cbar = fig.colorbar(sm, ax=axs.ravel().tolist(), cax=cax_arr)
+         cbar.set_label("Arrival Time (non-dim)", fontsize=cbar_fontsize)
+      
+@@ -231,7 +238,7 @@ class paper_plots:
+ 
+         ax = axs[0]
+         self.setup_ax(ax)       
+-        im = self.plot_vel_field(ax,t=vmax,r=199)
++        im = self.plot_vel_field(ax,t=vmax,r=9999)
+         # traj_dataset=random.shuffle(traj_dataset)
+         for idx, traj in enumerate(tr_traj_dataset):
+             timesteps, states, actions, returns_to_go, traj_mask,_ = traj
+@@ -240,12 +247,12 @@ class paper_plots:
+             states = (states*std) + mean
+             states = states*(traj_mask.reshape(-1,1))
+ 
+-            ax.plot(states[:t_done,1], states[:t_done,2], color=sm.to_rgba(t_done), alpha=1 )
++            ax.plot(states[:t_done,1], states[:t_done,2], color=sm.to_rgba(t_done), alpha=0.5 )
+             ax.scatter(states[-1,1], states[-1,2], alpha=0.5, zorder=10000, s=5)
+ 
+         ax = axs[1]
+         self.setup_ax(ax)       
+-        im = self.plot_vel_field(ax,t=vmax,r=199)
++        im = self.plot_vel_field(ax,t=vmax,r=9999)
+         # traj_dataset=random.shuffle(traj_dataset)
+         for idx, traj in enumerate(val_traj_dataset):
+             timesteps, states, actions, returns_to_go, traj_mask,_ = traj
+@@ -254,13 +261,13 @@ class paper_plots:
+             states = (states*std) + mean
+             states = states*(traj_mask.reshape(-1,1))
+ 
+-            ax.plot(states[:t_done,1], states[:t_done,2], color=sm.to_rgba(t_done), alpha=1 )
++            ax.plot(states[:t_done,1], states[:t_done,2], color=sm.to_rgba(t_done), alpha=0.5 )
+             ax.scatter(states[-1,1], states[-1,2], alpha=0.5, zorder=10000, s=5)
+ 
+         pr_t_dones = []
+         ax = axs[2]
+         self.setup_ax(ax, show_ylabel=False)
+-        im = self.plot_vel_field(ax,t=vmax,r=199)
++        im = self.plot_vel_field(ax,t=vmax,r=9999)
+         print(f"{len(self.op_traj_dict_list)}")
+         # sys.exit()
+         for idx,traj in enumerate(self.op_traj_dict_list):
+@@ -285,7 +292,7 @@ class paper_plots:
+         
+         # cbarv = fig.colorbar(im, ax=ax)
+         # cbarv.set_label("Velocity Magnitude", fontsize=cbar_fontsize)
+-        plt.subplots_adjust( left= 0.1, right=0.9, top=0.9, bottom=0.2, wspace=-0.05)
++        plt.subplots_adjust( left= 0.1, right=0.9, top=0.2, bottom=0.2, wspace=0.1)
+ 
+         cax_arr = ax.inset_axes([1.05, 0, 0.05, 1])
+         cax_vel = ax.inset_axes([1.30, 0, 0.05, 1])
+@@ -382,14 +389,14 @@ class paper_plots:
+                             show_states=True,
+                             show_xticks=True,
+                             show_yticks=True,
+-                            lab_fs = 15,
++                            lab_fs = 12,
+                             tick_fs = 14,
+                             ):
+         ax.set_aspect('equal', adjustable='box')
+         ax.set_xlim([0,self.env.xlim])
+         ax.set_ylim([0,self.env.ylim])
+-        xticks = np.arange(0,self.env.xlim +25,25)
+-        yticks = xticks.copy()
++        xticks = np.arange(0,self.env.xlim+15,30)
++        yticks = np.arange(0,self.env.ylim+15,30)
+         ax.xaxis.set_ticks(xticks)
+         ax.yaxis.set_ticks(yticks)
+         ax.set_xticklabels(xticks, fontsize=tick_fs)
+diff --git a/my-translat-transformer/src/src_utils.py b/my-translat-transformer/src/src_utils.py
+index dda8382..a14f3fa 100644
+--- a/my-translat-transformer/src/src_utils.py
++++ b/my-translat-transformer/src/src_utils.py
+@@ -457,6 +457,7 @@ def plot_vel_field(env,t,r=0, g_strmplot_lw=1, g_strmplot_arrowsize=1):
+     plt.streamplot(X, Y, vx_grid, vy_grid, color = 'grey', zorder = 0,  linewidth=g_strmplot_lw, arrowsize=g_strmplot_arrowsize, arrowstyle='->')
+     v_mag_grid = (vx_grid**2 + vy_grid**2)**0.5
+     plt.contourf(X, Y, v_mag_grid, cmap = "Blues", alpha = 0.5, zorder = -1e5)
++    # dummmy
+ 
+ def denormalize(txy_norm,tr_stats):
+     mean, std = tr_stats
+@@ -732,7 +733,8 @@ def simulate_tgt_actions(traj_dataset,
+     if env != None:
+         plt.xlim([0, env.xlim])
+         plt.ylim([0, env.ylim])
+- 
++        obstacle = DOLS_obstacle()
++        ax.add_patch(obstacle)
+         if env.target_pos.ndim == 1:
+             target_circle = plt.Circle(env.target_pos, env.target_rad, color='r', alpha=0.3)
+             ax.add_patch(target_circle)
+@@ -817,10 +819,14 @@ def visualize_input(traj_dataset,
+             # print(f"bcords: {states[-1,1], states[-1,2]}")
+     plt.xlim([0, 100.])
+     plt.ylim([0, 100.])
++    if color_by_time:
++        cbar = plt.colorbar(scalarMap, label="Arrival Time")
+ 
+     if env != None:
+         plt.xlim([0, env.xlim])
+         plt.ylim([0, env.ylim])
++        obstacle = DOLS_obstacle()
++        ax.add_patch(obstacle)
+         print("****VERIFY: env.target_pos: ", env.target_pos)
+         print(f"**** verify: {len(env.target_pos)}")
+         if env.target_pos.ndim == 1:
+diff --git a/my-translat-transformer/src/train.py b/my-translat-transformer/src/train.py
+index 93540e6..6ad5525 100644
+--- a/my-translat-transformer/src/train.py
++++ b/my-translat-transformer/src/train.py
+@@ -451,8 +451,8 @@ def train_model(args=None, cfg_name=None):
+                                         )
+ 
+     # train_dataloader = DataLoader(tr_set, batch_size=batch_size)
+-    # visualize_input(val_set, stats=None, log_wandb=True, at_time=119, info_str='val', color_by_time=False)
+-    # visualize_input(test_set, stats=None, log_wandb=True, at_time=119, info_str='test', color_by_time=False)
++    # visualize_input(val_set, stats=None, log_wandb=True, at_time=100, info_str='val', color_by_time=False)
++    # visualize_input(test_set, stats=None, log_wandb=True, at_time=100, info_str='test', color_by_time=False)
+ 
+     _, dummy_target, _, _, dummy_env_coef_seq, _,_,dummy_flow_dir,_ = tr_set[0]
+     src_vec_dim = dummy_env_coef_seq.shape[-1]
+@@ -461,13 +461,13 @@ def train_model(args=None, cfg_name=None):
+     # intantiate gym env for vizualization purposes
+     env_4_viz = setup_env(dummy_flow_dir)
+ 
+-    # visualize_input(tr_set, log_wandb=True, at_time=119, env=env_4_viz)
+-    # simulate_tgt_actions(tr_set,
+-    #                         env=env_4_viz,
+-    #                         log_wandb=True,
+-    #                         wandb_fname='simulate_tgt_actions',
+-    #                         plot_flow=True,
+-    #                         at_time=119)
++    visualize_input(tr_set, log_wandb=True, at_time=99, env=env_4_viz)
++    simulate_tgt_actions(tr_set,
++                            env=env_4_viz,
++                            log_wandb=True,
++                            wandb_fname='simulate_tgt_actions',
++                            plot_flow=True,
++                            at_time=100)
+     
+     transformer = mySeq2SeqTransformer_v1(num_encoder_layers, num_decoder_layers, embed_dim,
+                                  n_heads, src_vec_dim, tgt_vec_dim, 
+@@ -705,16 +705,15 @@ class jugaad_cfg:
+ def load_prev_and_test(args, cfg_name):
+     # load model
+     # tmp_path = ROOT + "log/my_translat_GPTdset_DG3_model_04-01-03-20.pt"
+-    tmp_path = ROOT + "log/my_translat_GPTdset_DG3_model_03-30-23-11.pt"
+-
++    tmp_path = ROOT + "log/my_translat_DOLS_Cylinder_model_05-20-12-03.pt" 
+     transformer = torch.load(tmp_path)
+     model_name = tmp_path[:-3].split('/')[-1]
+     # load unseen dataset
+-    dataset_path = ROOT + "data/GPT_dset_DG3/static_obs/GPTdset_DG3_g100x100x120_r5k_Obsv1_w5_1dataset_single_25305.pkl"
++    dataset_path = "/home/rohit/Documents/Research/Planning_with_transformers/Translation_transformer/my-translat-transformer/data/DOLS_Cylinder/targ_2/gathered_targ_2.pkl"
+     traj_dataset = load_pkl(dataset_path)
+     dataset_name = dataset_path[:-4].split('/')[-1]
+     # src_stats_path = tmp_path[:-3] + "_src_stats.npy"
+-    src_stats_path = "/home/rohit/Documents/Research/Planning_with_transformers/Translation_transformer/my-translat-transformer/log/my_translat_GPTdset_DG3_model_04-03-14-07_src_stats.npy"
++    src_stats_path = "/home/rohit/Documents/Research/Planning_with_transformers/Translation_transformer/my-translat-transformer/log/my_translat_DOLS_Cylinder_model_05-20-12-03_src_stats.npy"
+     src_stats = np.load(src_stats_path)
+     src_stats = (src_stats[0], src_stats[1])
+ 
+@@ -722,35 +721,42 @@ def load_prev_and_test(args, cfg_name):
+                                     split_ratio=[0.8,0.05,0.15], 
+                                     random_seed=42,
+                                     random_split=True)
+-    us_test_traj_set, _, _ = set_split
+-    us_test_idx_set, _, _ = idx_split
+-    us_test_traj_set = create_action_dataset_v2(us_test_traj_set, 
++    us_train_traj_set, us_test_traj_set, us_val_traj_set = set_split
++    us_train_idx_set, us_test_idx_set, us_val_idx_set = idx_split
++    us_train_traj_set = create_action_dataset_v2(us_train_traj_set, 
+                             idx_set=[None],
+-                            context_len=120,
++                            context_len=101,
+                             # norm_params_4_val = src_stats
+                                         )
+-    _, _, us_test_traj_set = set_split
+-    _, _, us_test_idx_set = idx_split
++    # _, _, us_test_traj_set = set_split
++    # _, _, us_test_idx_set = idx_split
++    us_val_traj_set = create_action_dataset_v2(us_val_traj_set, 
++                            idx_set=[None],
++                            context_len=101,
++                            norm_params_4_val = src_stats
++                                        )
+     us_test_traj_set = create_action_dataset_v2(us_test_traj_set, 
+                             idx_set=[None],
+-                            context_len=120,
++                            context_len=101,
+                             norm_params_4_val = src_stats
+                                         )
+     
+     # src_stats = us_test_traj_set.get_src_stats()
+     test_idx_set = None #TODO: clean unneeded vars and args
+-    # read cfg not working and requires postprocessing
++    # read cfg not working and requires postprocessing 
+     # cfg_path =  tmp_path[:-3] + ".yml"
+     # cfg =  read_cfg_file(cfg_path)
+-    cfg = jugaad_cfg(context_len=120, device='cuda')
+-    # op_traj_dict_list, results = translate(transformer,us_test_idx_set, us_test_traj_set, 
+-    #                                         None, cfg, earlybreak=500)
+-    # save_object(op_traj_dict_list,f"/home/rohit/Documents/Research/Planning_with_transformers/Translation_transformer/my-translat-transformer/paper_plots/my_translat_GPTdset_DG3_model_03-30-23-11/GPTdset_DG3_g100x100x120_r5k_Obsv1_w5_1dataset_single_25305/op_traj_dict_list.pkl")
+-    # save_object(results,f"/home/rohit/Documents/Research/Planning_with_transformers/Translation_transformer/my-translat-transformer/paper_plots/my_translat_GPTdset_DG3_model_03-30-23-11/GPTdset_DG3_g100x100x120_r5k_Obsv1_w5_1dataset_single_25305/results.pkl")
+-
+-    op_traj_dict_list = load_pkl(f"/home/rohit/Documents/Research/Planning_with_transformers/Translation_transformer/my-translat-transformer/paper_plots/my_translat_GPTdset_DG3_model_03-30-23-11/GPTdset_DG3_g100x100x120_r5k_Obsv1_w5_1dataset_single_25305/op_traj_dict_list.pkl")
+-    results = load_pkl(f"/home/rohit/Documents/Research/Planning_with_transformers/Translation_transformer/my-translat-transformer/paper_plots/my_translat_GPTdset_DG3_model_03-30-23-11/GPTdset_DG3_g100x100x120_r5k_Obsv1_w5_1dataset_single_25305/results.pkl")
+-    _, dummy_target, _, _, dummy_env_coef_seq, _,_,dummy_flow_dir,_ = us_test_traj_set[0]
++    cfg = jugaad_cfg(context_len=101, device='cuda')
++    op_traj_dict_list, results = translate(transformer,us_val_idx_set, us_val_traj_set, 
++                                            None, cfg) #earlybreak=500
++    os.makedirs(os.path.dirname("/home/rohit/Documents/Research/Planning_with_transformers/Translation_transformer/my-translat-transformer/paper_plots/my_translat_DOLS_Cylinder_model_05-20-12-03/DOLS_targ2/op_traj_dict_list.pkl"), exist_ok=True)
++    os.makedirs(os.path.dirname("/home/rohit/Documents/Research/Planning_with_transformers/Translation_transformer/my-translat-transformer/paper_plots/my_translat_DOLS_Cylinder_model_05-20-12-03/DOLS_targ2/results.pkl"), exist_ok=True)
++    save_object(op_traj_dict_list,f"/home/rohit/Documents/Research/Planning_with_transformers/Translation_transformer/my-translat-transformer/paper_plots/my_translat_DOLS_Cylinder_model_05-20-12-03/DOLS_targ2/op_traj_dict_list.pkl")
++    save_object(results,f"/home/rohit/Documents/Research/Planning_with_transformers/Translation_transformer/my-translat-transformer/paper_plots/my_translat_DOLS_Cylinder_model_05-20-12-03/DOLS_targ2/results.pkl")
++
++    op_traj_dict_list = load_pkl(f"/home/rohit/Documents/Research/Planning_with_transformers/Translation_transformer/my-translat-transformer/paper_plots/my_translat_DOLS_Cylinder_model_05-20-12-03/DOLS_targ2/op_traj_dict_list.pkl")
++    results = load_pkl(f"/home/rohit/Documents/Research/Planning_with_transformers/Translation_transformer/my-translat-transformer/paper_plots/my_translat_DOLS_Cylinder_model_05-20-12-03/DOLS_targ2/results.pkl")
++    _, dummy_target, _, _, dummy_env_coef_seq, _,_,dummy_flow_dir,_ = us_val_traj_set[0]
+     # intantiate gym env for vizualization purposes
+     env_4_viz = setup_env(dummy_flow_dir)
+ 
+@@ -761,7 +767,7 @@ def load_prev_and_test(args, cfg_name):
+     
+     # taken from vis_traj_with_attention.py in decision transformer project
+     print(f"model_name = {model_name}")
+-    save_dir = "paper_plots/"  + model_name + "/" + dataset_name
++    save_dir = "paper_plots/"  + model_name + "/DOLS_targ2"
+     save_dir = join(ROOT,save_dir)
+     if not os.path.exists(save_dir):
+         os.mkdir(save_dir)
+@@ -776,9 +782,9 @@ def load_prev_and_test(args, cfg_name):
+     pp = paper_plots(env_4_viz, op_traj_dict_list, src_stats,
+                         paper_plot_info=paper_plot_info,
+                         save_dir=save_dir)
+-    # pp.plot_val_ip_op(us_test_traj_set, test_set_txy_preds, path_lens, success_list)
++    pp.plot_val_ip_op(us_val_traj_set, test_set_txy_preds, path_lens, success_list)
+     # pp.plot_traj_by_arr(us_test_traj_set,set_str="_us_test_")
+-    # pp.plot_train_val_ip_op(train_traj_dataset, val_traj_dataset)
++    # pp.plot_train_val_ip_op(us_train_traj_set, us_test_traj_set)
+     # pp.plot_traj_by_arr(val_traj_dataset, set_str="_val")
+     # pp.plot_att_heatmap(100)
+     # pp.plot_traj_by_att("a_a_attention")
+@@ -799,26 +805,26 @@ def load_prev_and_test(args, cfg_name):
+     #                     wandb_suffix="test_on_unseen",
+     #                     model_name=model_name+"_on_"+dataset_name)
+     
+-    plot_all_attention_mats(all_att_mat_list[0],
+-                            log_wandb=False, 
+-                            model_name=model_name+"_on_"+dataset_name)
+-    for t in [i*10 for i in range(1,11)]:
+-        viz_op_traj_with_attention(test_set_txy_preds,
+-                            all_att_mat_list, 
+-                            path_lens,
+-                            mode='dec_sa',       #or 'a_s_attention'
+-                            average_across_layers=True,
+-                            stats=None, 
+-                            env=env_4_viz, 
+-                            log_wandb=False, 
+-                            scale_each_row=True,
+-                            plot_policy=False,
+-                            traj_idx=None,      #None=all, list of rzn_ids []
+-                            show_scatter=False,
+-                            plot_flow=True,
+-                            at_time=t,
+-                            model_name=model_name+"_on_"+dataset_name
+-                            )
++    # plot_all_attention_mats(all_att_mat_list[0],
++    #                         log_wandb=False, 
++    #                         model_name=model_name+"_on_"+dataset_name)
++    # for t in [i*10 for i in range(1,11)]:
++    #     viz_op_traj_with_attention(test_set_txy_preds,
++    #                         all_att_mat_list, 
++    #                         path_lens,
++    #                         mode='dec_sa',       #or 'a_s_attention'
++    #                         average_across_layers=True,
++    #                         stats=None, 
++    #                         env=env_4_viz, 
++    #                         log_wandb=False, 
++    #                         scale_each_row=True,
++    #                         plot_policy=False,
++    #                         traj_idx=None,      #None=all, list of rzn_ids []
++    #                         show_scatter=False,
++    #                         plot_flow=True,
++    #                         at_time=t,
++    #                         model_name=model_name+"_on_"+dataset_name
++    #                         )
+     # viz_op_traj_with_attention(test_set_txy_preds,
+     #                     all_att_mat_list, 
+     #                     path_lens,
+@@ -835,17 +841,17 @@ def load_prev_and_test(args, cfg_name):
+     #                     at_time=None,
+     #                     model_name=model_name+"_on_"+dataset_name
+     #                     )   
+-    print(f" Results on unseen test")
+-    print_dict(results)  
+-    # visualize_input(us_test_traj_set, at_time=119, 
+-    #                                   env=env_4_viz,
+-    #                                   log_wandb=False,
+-    #                                   data_name=dataset_name
+-    #                                         )
+-
+-    print(f" Results on unseen test")
+-    print_dict(results)
+-    return        
++    # print(f" Results on unseen test")
++    # print_dict(results)  
++    # # visualize_input(us_test_traj_set, at_time=119, 
++    # #                                   env=env_4_viz,
++    # #                                   log_wandb=False,
++    # #                                   data_name=dataset_name
++    # #                                         )
++
++    # print(f" Results on unseen test")
++    # print_dict(results)
++    # return        
+ 
+ 
+ 

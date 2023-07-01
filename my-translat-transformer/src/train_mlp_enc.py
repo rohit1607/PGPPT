@@ -470,15 +470,14 @@ def train_model(args=None, cfg_name=None):
     print(f"src_vec_dim = {src_vec_dim} \n tgt_vec_dim = {tgt_vec_dim}")
     # intantiate gym env for vizualization purposes
     env_4_viz = setup_env(dummy_flow_dir)
-    break_at = 100
-    visualize_input(tr_set, log_wandb=True, at_time=99, env=env_4_viz, break_at=break_at)
+
+    visualize_input(tr_set, log_wandb=True, at_time=99, env=env_4_viz)
     simulate_tgt_actions(tr_set,
                             env=env_4_viz,
                             log_wandb=True,
                             wandb_fname='simulate_tgt_actions',
                             plot_flow=True,
-                            at_time=100,
-                            break_at=break_at)
+                            at_time=100)
     
     transformer = mySeq2SeqTransformer_v1(num_encoder_layers, num_decoder_layers, embed_dim,
                                  n_heads, src_vec_dim, tgt_vec_dim, 
@@ -720,13 +719,14 @@ def load_prev_and_test(args, cfg_name):
     # load model
     # tmp_path = ROOT + "log/my_translat_GPTdset_DG3_model_04-01-03-20.pt"
     # ROOT = /home/rohit/Documents/Research/Planning_with_transformers/Translation_transformer/my-translat-transformer/
-    tmp_path = ROOT + "log/my_translat_DOLS_Cylinder_model_06-21-14-57.pt" 
+    tmp_path = ROOT + "log/my_translat_DOLS_Cylinder_model_06-30-13-06.pt" 
     transformer = torch.load(tmp_path)
     model_name = tmp_path[:-3].split('/')[-1]
     # load unseen dataset
-    targ = '5'
+    d_no = '43475'
     dset = 'test'
-    dataset_path = ROOT + f"data/DOLS_Cylinder/targ_{targ}/gathered_targ_{targ}.pkl"
+    
+    dataset_path = ROOT + f"data/GPT_dset_DG3/static_obs/GPTdset_DG3_g100x100x120_r5k_Obsv1_w5_1dataset_single_{d_no}pkl"
     traj_dataset = load_pkl(dataset_path)
     dataset_name = dataset_path[:-4].split('/')[-1]
     # src_stats_path = tmp_path[:-3] + "_src_stats.npy"

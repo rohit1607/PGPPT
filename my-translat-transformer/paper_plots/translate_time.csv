@@ -1,0 +1,7 @@
+Model, Params, With/Without Break, Avg time for 100 rzns, Total time for 500
+my_translat_DOLS_Cylinder_model_06-21-14-57, 17233, With, 0.5193506969651207s, 274.420s
+my_translat_DOLS_Cylinder_model_06-21-14-57, 17233, Without, 0.5797220499115064s, 293.266s
+my_translat_DOLS_Cylinder_model_06-21-19-23, 189089, With, 0.7611231193621643, 742.898s
+
+
+### Both the models are tested on the targets they were trained with

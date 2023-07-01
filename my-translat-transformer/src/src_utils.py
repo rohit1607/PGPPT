@@ -687,7 +687,8 @@ def simulate_tgt_actions(traj_dataset,
                            log_wandb=True,
                            wandb_fname='simulate_tgt_actions',
                            plot_flow=True,
-                           at_time=119
+                           at_time=119,
+                           break_at=None,
                            ):
     
     path = join(ROOT, "tmp/last_exp_figs/")
@@ -704,6 +705,8 @@ def simulate_tgt_actions(traj_dataset,
     rzn_list = [item[-1] for item in traj_dataset.dataset]
     flow_dir_list = [item[-2] for item in traj_dataset.dataset]
     for i in range(int(0.1*len(traj_dataset))):
+        if i == break_at:
+            break
         rzn = rzn_list[i]
         flow_dir = flow_dir_list[i]
         env.set_rzn(rzn)
@@ -752,6 +755,9 @@ def simulate_tgt_actions(traj_dataset,
         wandb.log({wandb_fname: wandb.Image(fname)})
     plt.cla()
     
+    print("success_count = ", success_count_)
+    return success_count_
+    
 def visualize_input(traj_dataset, 
                     stats=None, 
                     env=None, 
@@ -762,7 +768,8 @@ def visualize_input(traj_dataset,
                     at_time=None,
                     color_by_time=True,
                     plot_flow=True,
-                    data_name=''
+                    data_name='',
+                    break_at=None
                     ):
  
     print(" ---- Visualizing input ---- ")
@@ -802,6 +809,8 @@ def visualize_input(traj_dataset,
         scalarMap = cm.ScalarMappable(norm=cNorm, cmap=cmap)
 
     for idx, traj in enumerate(traj_dataset):
+        if idx == break_at:
+            break
         if idx in traj_idx:
             states = states_list[idx]
             t_done = t_dones[idx]
