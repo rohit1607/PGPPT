@@ -312,8 +312,8 @@ class create_action_dataset_v2(Dataset):
         self.context_len = context_len
         self.n_trajs = len(dataset)
         self.dataset = dataset
-        # self.X = np.array([np.concatenate((item[0], item[1]), axis=-1) for item in self.dataset])
-        self.X = np.array([item[0] for item in self.dataset])
+        self.X = np.array([np.concatenate((item[0], item[1]), axis=-1) for item in self.dataset])
+        # self.X = np.array([item[0] for item in self.dataset]) # Uncomment for DOLS
         self.X_mean = np.mean(self.X, axis=0)
         self.X_std = np.std(self.X, axis=0)
 

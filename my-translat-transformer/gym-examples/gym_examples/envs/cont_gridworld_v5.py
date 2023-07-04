@@ -105,7 +105,7 @@ class ContGridWorld_v5(gym.Env):
         self.Vi[np.isnan(self.Vi)] = 0
         self.Yi[np.isnan(self.Yi)] = 0
 
-        # TODO: IMP: May not work for DOLS. Vel were scaled in pre-=processing
+        # TODO: IMP: May not work for DOLS. Vel were scaled in pre-=processing 
         if self.if_scale_velocity:
             self.scale_velocity()
         # Uncomment for DOLS

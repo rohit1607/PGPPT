@@ -41,6 +41,8 @@ def setup_env(flow_dir):
     env_name = flow_specific_cfg["env_name"]
     params2 = read_cfg_file(cfg_name=join(flow_dir,"params.yml"))
     env = gym.make(env_name)
+    # # IMP: CLEAN CODE
+    # env.if_scale_velocity = True
     env.setup(flow_specific_cfg, params2, add_trans_noise=False)
     return env
 
@@ -134,7 +136,6 @@ def train_epoch(model, optimizer, tr_set, cfg, args, scheduler=None, log_interva
         optimizer.zero_grad()
 
         loss.backward()
-        # TODO: try 10
         torch.nn.utils.clip_grad_norm_(model.parameters(), 4)
 
         optimizer.step()
@@ -226,19 +227,15 @@ def translate(model: torch.nn.Module, test_idx, test_set, tr_set_stats, cfg, ear
             flow_dir = flow_dir[0]
 
             env = setup_env(flow_dir)
-            # ENV_ = setup_env(flow_dir) # to test txy predictions from action labels
 
             op_traj_dict = {}
             reached_target = False
             reached_target_ = False
 
             env.reset()
-            # ENV_.reset()
 
             idx = idx[0].item() #initially idx = tensor([0])
-            # rzn = test_idx[idx]
             env.set_rzn(rzn)
-            # ENV_.set_rzn(rzn)
 
             timesteps = timesteps.to(cfg.device)
             count += 1
@@ -254,13 +251,9 @@ def translate(model: torch.nn.Module, test_idx, test_set, tr_set_stats, cfg, ear
             PREDS_ = torch.zeros((1, cfg.context_len, dummy_tgt_for_mask.shape[2]),dtype=torch.float32, device=cfg.device)
             
             txy_preds = np.zeros((1, cfg.context_len+1, 3),dtype=np.float32,)
-            # TXY_PREDS_ =  np.zeros((1, cfg.context_len+1, 3),dtype=np.float32,)
-            # print(f" preds.shape = {preds.shape}, tgt.shape = {tgt.shape}")
             txy_preds[0,0,:] = np.array([0,env.start_pos[0],env.start_pos[1]])
-            # TXY_PREDS_[0,0,:] = np.array([0,ENV_.start_pos[0],ENV_.start_pos[1]])
             # TODO: Change. Put in SOS token
             preds[0,0,:] = tgt[0,0,:]
-            # PREDS_[0,0,:] = tgt[0,0,:]
             a = preds[0,0,:].cpu().numpy().copy()
             a = a*2*np.pi
             txy, reward ,done, info = env.step(a)
@@ -281,31 +274,8 @@ def translate(model: torch.nn.Module, test_idx, test_set, tr_set_stats, cfg, ear
                         reached_target = True
                         success_count += 1
                     break
-            # translate_one_rzn_end  = timer()
-            # # print(f'Translate time for {rzn}: {(translate_one_rzn_end-translate_one_rzn):.3f}s')
-            # translate_one_rzn_list.append(translate_one_rzn_end-translate_one_rzn)   
 
-            # # to test txy predictions from action labels
-            # for k in range(cfg.context_len):
-            #     # memory = memory.to(cfg.device)
-            #     # out = model.decode(PREDS_, memory, tgt_mask, timesteps)
-            #     # gen = model.generator(out)
-            #     # PREDS_[0,k+1,:] = tgt[0,k,:].detach()
-            #     # a = PREDS_[0,k+1,:].cpu().numpy().copy()
-            #     a = tgt[0,k,0].cpu().numpy().copy()
-            #     a = a*2*np.pi
-            #     txy, reward ,done, info = ENV_.step(a)
-            #     TXY_PREDS_[0,k+1,:] = txy 
-            #     # TODO: ***IMP*****: reduce GPU-CPU communication
-            #     if done:
-            #         if reward > 0:
-            #             reached_target_ = True
-            #             success_count_ += 1
-            #         break
-            k = 0
-            # loss = loss_fn(logits.reshape(-1, logits.shape[-1]), tgt_out.reshape(-1))
             mse = F.mse_loss(preds[0,:i].cpu(),tgt[0,:i].cpu())
-            # print(f"rough mse for sample {count} = {mse}")
 
             op_traj_dict['states'] = np.array(txy_preds)
             op_traj_dict['actions'] = preds.cpu()*2*np.pi
@@ -318,8 +288,8 @@ def translate(model: torch.nn.Module, test_idx, test_set, tr_set_stats, cfg, ear
             # op_traj_dict['states_for_action_labels'] = np.array(TXY_PREDS_)
             op_traj_dict['states_for_action_labels'] = None
             op_traj_dict['action_labels'] = tgt.cpu()*2*np.pi
-            op_traj_dict['t_done_fal'] = k+1
-            op_traj_dict['n_tsteps_fal'] = k
+            # op_traj_dict['t_done_fal'] = k+1
+            # op_traj_dict['n_tsteps_fal'] = k
             # op_traj_dict['attention_weights'] = attention_weights
             op_traj_dict['success_fal'] = reached_target_
             op_traj_dict_list.append(op_traj_dict)
@@ -460,16 +430,16 @@ def train_model(args=None, cfg_name=None):
                             norm_params_4_val = src_stats
                                         )
 
-    # train_dataloader = DataLoader(tr_set, batch_size=batch_size)
-    # visualize_input(val_set, stats=None, log_wandb=True, at_time=100, info_str='val', color_by_time=False)
-    # visualize_input(test_set, stats=None, log_wandb=True, at_time=100, info_str='test', color_by_time=False)
 
     _, dummy_target, _, _, dummy_env_coef_seq, _,_,dummy_flow_dir,_ = tr_set[0]
     src_vec_dim = dummy_env_coef_seq.shape[-1]
     tgt_vec_dim = dummy_target.shape[-1]
     print(f"src_vec_dim = {src_vec_dim} \n tgt_vec_dim = {tgt_vec_dim}")
+    
     # intantiate gym env for vizualization purposes
     env_4_viz = setup_env(dummy_flow_dir)
+    
+    # # for Debugging
     break_at = 100
     visualize_input(tr_set, log_wandb=True, at_time=99, env=env_4_viz, break_at=break_at)
     simulate_tgt_actions(tr_set,
@@ -486,8 +456,6 @@ def train_model(args=None, cfg_name=None):
                                  max_len=context_len,
                                  positional_encoding="simple"
                                  ).to(cfg.device)
-    
- 
     
     if optimizer_name == 'AdamW':
         optimizer = torch.optim.AdamW(
@@ -554,7 +522,6 @@ def train_model(args=None, cfg_name=None):
             tr_set_txy_preds = [d['states'] for d in tr_op_traj_dict_list]
             all_att_mat_list =  [d['all_att_mat'] for d in tr_op_traj_dict_list]
 
-            # tr_set_txy_PREDS_ = [d['states_for_action_labels'] for d in tr_op_traj_dict_list]
 
             path_lens = [d['n_tsteps'] for d in tr_op_traj_dict_list]
             visualize_output(tr_set_txy_preds, 
@@ -714,8 +681,6 @@ class jugaad_cfg:
         self.device = device
 
 def load_prev_and_test(args, cfg_name):
-
-
 
     # load model
     # tmp_path = ROOT + "log/my_translat_GPTdset_DG3_model_04-01-03-20.pt"

@@ -1,3 +1,21 @@
 Model, Dataset, Val/Test, Info
 my_translat_DOLS_Cylinder_model_06-21-14-57, targ_5, Val (1500), {'mean Tarr logged dataset': 73.97866666666667 'std Tarr logged dataset': 1.336990983099321 'mean Tarr prediction': 73.70266666666667 'std Tarr prediction': 2.967309593254843 'success rate': 0.9906666666666667 'prediction count': 1500}
 my_translat_DOLS_Cylinder_model_06-21-14-57, targ_5, Test (500), {'mean Tarr logged dataset': 73.948 'std Tarr logged dataset': 1.3226095417771642 'mean Tarr prediction': 73.696 'std Tarr prediction': 3.0264804641695604 'success rate': 0.99 'prediction count': 500}
+
+
+encoder_only_bc
+my_translat_DOLS_Cylinder_model_06-30-21-26, targ_5, Test (500),  {'mean Tarr logged dataset': 73.956, 'std Tarr logged dataset': 1.3935795635700174, 'mean Tarr prediction': 73.74, 'std Tarr prediction': 3.631583676579682, 'success rate': 0.986, 'prediction count': 500}
+
+
+
+
+mlp_bc
+my_translat_DOLS_Cylinder_model_06-30-01-42, targ_5, Test(500),  {'mean Tarr logged dataset': 73.912, 'std Tarr logged dataset': 1.2744630241792032, 'mean Tarr prediction': 74.306, 'std Tarr prediction': 7.914061157206204, 'success rate': 0.956, 'prediction count': 500}
+my_translat_GPTdset_DG3_model_07-01-14-36, 43475, Test(243),  {'mean Tarr logged dataset': 84.75308641975309, 'std Tarr logged dataset': 15.800347079740629, 'mean Tarr prediction': 85.38683127572017, 'std Tarr prediction': 24.92817978859177, 'success rate': 0.3497942386831276, 'prediction count': 243}
+my_translat_GPTdset_DG3_model_07-01-14-36, 45565, Test(250),   {'mean Tarr logged dataset': 72.712, 'std Tarr logged dataset': 2.505405356424385, 'mean Tarr prediction': 80.676, 'std Tarr prediction': 28.153348362139802, 'success rate': 0.316, 'prediction count': 250}
+my_translat_GPTdset_DG3_model_07-01-15-15, 25305, Test(250),  {'mean Tarr logged dataset': 70.284, 'std Tarr logged dataset': 2.4566937131030397, 'mean Tarr prediction': 70.524, 'std Tarr prediction': 2.329253957815678, 'success rate': 1.0, 'prediction count': 250}
+
+
+_____
+my_translat_GPTdset_DG3_model_07-01-15-45, 43475, Test(243),  {'mean Tarr logged dataset': 84.1440329218107, 'std Tarr logged dataset': 15.088757819718827, 'mean Tarr prediction': 75.22222222222223, 'std Tarr prediction': 26.030845900039534, 'success rate': 0.37448559670781895, 'prediction count': 243}
+my_translat_GPTdset_DG3_model_07-01-15-45, 45565, Test(250),  {'mean Tarr logged dataset': 72.924, 'std Tarr logged dataset': 2.7096538524320772, 'mean Tarr prediction': 74.056, 'std Tarr prediction': 9.812485108268955, 'success rate': 0.928, 'prediction count': 250}

@@ -128,14 +128,14 @@ class paper_plots:
         vmax = int(78)
         ax = axs[0]
         self.setup_ax(ax)       
-        im = self.plot_vel_field(ax,t=vmax,r=9999)
+        im = self.plot_vel_field(ax,t=vmax,r=1999)
         # self.plot_obstacle(ax, xyw=xyw)
         obstacle = self.DOLS_obstacle()
         ax.add_patch(obstacle)
 
         ax = axs[1] 
         self.setup_ax(ax)
-        im = self.plot_vel_field(ax,t=vmax,r=9999)
+        im = self.plot_vel_field(ax,t=vmax,r=1999)
         # self.plot_obstacle(ax, xyw=xyw)
         obstacle = self.DOLS_obstacle()
         ax.add_patch(obstacle)
@@ -182,11 +182,11 @@ class paper_plots:
 
         ax = axs[0]
         self.setup_ax(ax)       
-        im = self.plot_vel_field(ax,t=vmax,r=9999)
-        # self.plot_obstacle(ax, xyw=xyw)
-        obstacle = self.DOLS_obstacle()
-        ax.add_patch(obstacle)
-        # traj_dataset=random.shuffle(traj_dataset)
+        im = self.plot_vel_field(ax,t=vmax,r=1999)
+        self.plot_obstacle(ax, xyw=xyw)
+        # obstacle = self.DOLS_obstacle()
+        # ax.add_patch(obstacle)
+
 
         for idx,traj in enumerate(ip_states_list):
             states = ip_states_list[idx]
@@ -202,7 +202,7 @@ class paper_plots:
         pr_t_dones = []
         ax = axs[1] 
         self.setup_ax(ax,show_ylabel=False)
-        im = self.plot_vel_field(ax,t=vmax,r=9999)
+        im = self.plot_vel_field(ax,t=vmax,r=1999)
         # self.plot_obstacle(ax, xyw=xyw)
         obstacle = self.DOLS_obstacle()
         ax.add_patch(obstacle)
@@ -266,7 +266,7 @@ class paper_plots:
 
         ax = axs[0]
         self.setup_ax(ax)       
-        im = self.plot_vel_field(ax,t=vmax,r=9999)
+        im = self.plot_vel_field(ax,t=vmax,r=1999)
         obstacle = self.DOLS_obstacle()
         ax.add_patch(obstacle)
         # traj_dataset=random.shuffle(traj_dataset)
@@ -284,7 +284,7 @@ class paper_plots:
 
         ax = axs[1] 
         self.setup_ax(ax,show_ylabel=False)
-        im = self.plot_vel_field(ax,t=vmax,r=9999)
+        im = self.plot_vel_field(ax,t=vmax,r=1999)
         # self.plot_obstacle(ax, xyw=xyw)
         obstacle = self.DOLS_obstacle()
         ax.add_patch(obstacle)

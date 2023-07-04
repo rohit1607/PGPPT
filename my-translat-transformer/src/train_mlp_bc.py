@@ -688,15 +688,15 @@ class jugaad_cfg:
 def load_prev_and_test(args, cfg_name):
 
     # load model
-    # tmp_path = ROOT + "log/my_translat_GPTdset_DG3_model_04-01-03-20.pt"
+    tmp_path = ROOT + "log/my_translat_GPTdset_DG3_model_07-01-15-45.pt"
     # ROOT = /home/rohit/Documents/Research/Planning_with_mlp_bc_models/Translation_mlp_bc_model/my-translat-transformer/
-    tmp_path = ROOT + "log/my_translat_DOLS_Cylinder_model_06-30-21-21.pt" 
+    # tmp_path = ROOT + "log/my_translat_DOLS_Cylinder_model_06-30-01-42.pt" 
     mlp_bc_model = torch.load(tmp_path)
     model_name = tmp_path[:-3].split('/')[-1]
     # load unseen dataset
-    targ = '5'
+    d_no = '43475'
     dset = 'test'
-    dataset_path = ROOT + f"data/DOLS_Cylinder/targ_{targ}/gathered_targ_{targ}.pkl"
+    dataset_path = ROOT + f"data/GPT_dset_DG3/static_obs/GPTdset_DG3_g100x100x120_r5k_Obsv1_w5_1dataset_single_{d_no}.pkl"
     traj_dataset = load_pkl(dataset_path)
     dataset_name = dataset_path[:-4].split('/')[-1]
     # src_stats_path = tmp_path[:-3] + "_src_stats.npy"
@@ -712,19 +712,19 @@ def load_prev_and_test(args, cfg_name):
     us_train_idx_set, us_test_idx_set, us_val_idx_set = idx_split
     us_train_traj_set = create_action_dataset_v2(us_train_traj_set, 
                             idx_set=[None],
-                            context_len=101,
+                            context_len=120,
                             # norm_params_4_val = src_stats
                                         )
     # _, _, us_test_traj_set = set_split
     # _, _, us_test_idx_set = idx_split
     us_val_traj_set = create_action_dataset_v2(us_val_traj_set, 
                             idx_set=[None],
-                            context_len=101,
+                            context_len=120,
                             norm_params_4_val = src_stats
                                         )
     us_test_traj_set = create_action_dataset_v2(us_test_traj_set, 
                             idx_set=[None],
-                            context_len=101,
+                            context_len=120,
                             norm_params_4_val = src_stats
                                         )
     
@@ -733,21 +733,20 @@ def load_prev_and_test(args, cfg_name):
     # read cfg not working and requires postprocessing 
     # cfg_path =  tmp_path[:-3] + ".yml"
     # cfg =  read_cfg_file(cfg_path)
-    cfg = jugaad_cfg(context_len=101, device='cuda')
+    cfg = jugaad_cfg(context_len=120, device='cuda')
     # translate_start_time = timer()
 
-
     op_traj_dict_list, results = translate(mlp_bc_model,us_test_idx_set, us_test_traj_set, 
-                                            None, cfg, earlybreak=500)
+                                            None, cfg)
     # translate_end_time = timer()
     # print(f"Translate runtime = {(translate_end_time - translate_start_time):.3f}s")
-    os.makedirs(os.path.dirname(ROOT + f"paper_plots/{model_name}/DOLS_targ_{targ}/{dset}_op_traj_dict_list.pkl"),exist_ok=True)
-    os.makedirs(os.path.dirname(ROOT + f"paper_plots/{model_name}/DOLS_targ_{targ}/{dset}_results.pkl"), exist_ok=True)
-    save_object(op_traj_dict_list, os.path.join(ROOT, f"paper_plots/{model_name}/DOLS_targ_{targ}/{dset}_op_traj_dict_list.pkl"))
-    save_object(results,os.path.join(ROOT, f"paper_plots/{model_name}/DOLS_targ_{targ}/{dset}_results.pkl"))
+    os.makedirs(os.path.dirname(ROOT + f"paper_plots/{model_name}/{dataset_name}/{dset}_op_traj_dict_list.pkl"),exist_ok=True)
+    os.makedirs(os.path.dirname(ROOT + f"paper_plots/{model_name}/{dataset_name}/{dset}_results.pkl"), exist_ok=True)
+    save_object(op_traj_dict_list, os.path.join(ROOT, f"paper_plots/{model_name}/{dataset_name}/{dset}_op_traj_dict_list.pkl"))
+    save_object(results,os.path.join(ROOT, f"paper_plots/{model_name}/{dataset_name}/{dset}_results.pkl"))
 
-    op_traj_dict_list = load_pkl(os.path.join(ROOT, f"paper_plots/{model_name}/DOLS_targ_{targ}/{dset}_op_traj_dict_list.pkl"))
-    results = load_pkl(os.path.join(ROOT, f"paper_plots/{model_name}/DOLS_targ_{targ}/{dset}_results.pkl"))
+    op_traj_dict_list = load_pkl(os.path.join(ROOT, f"paper_plots/{model_name}/{dataset_name}/{dset}_op_traj_dict_list.pkl"))
+    results = load_pkl(os.path.join(ROOT, f"paper_plots/{model_name}/{dataset_name}/{dset}_results.pkl"))
     _, dummy_target, _, _, dummy_env_coef_seq, _,_,dummy_flow_dir,_ = us_val_traj_set[0]
     # intantiate gym env for vizualization purposes
     env_4_viz = setup_env(dummy_flow_dir)
@@ -760,7 +759,7 @@ def load_prev_and_test(args, cfg_name):
     
     # taken from vis_traj_with_attention.py in decision transformer project
     print(f"model_name = {model_name}")
-    save_dir = "paper_plots/"  + model_name + f"/DOLS_targ_{targ}/mlp_bc"
+    save_dir = "paper_plots/"  + model_name + f"/{dataset_name}/mlp_bc"
     save_dir = join(ROOT,save_dir)
     if not os.path.exists(save_dir):
         os.mkdir(save_dir)
