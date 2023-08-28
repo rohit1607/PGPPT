@@ -15,8 +15,17 @@ add_transition_noise_during_inf: False
 noise_var: [0.1,0]
 
 dataset_name: "GPTdset_DG3"
-dataset_path: "/home/rohit/Documents/Research/Planning_with_transformers/Translation_transformer/my-translat-transformer/data/GPT_dset_DG3/static_obs/GPTdset_DG3_g100x100x120_r5k_Obsv1_w5_1dataset_v2.pkl"
+# dataset_path: "/home/rohit/Documents/Research/Planning_with_transformers/Translation_transformer/my-translat-transformer/data/GPT_dset_DG3/static_obs/GPTdset_DG3_g100x100x120_r5k_Obsv1_multi_ran_stat/Gathered_datasets/gathered_9_8_5k_test/gathered_9.pkl"
+# multi obs
+# dataset_path: "/home/rohit/Documents/Research/Planning_with_transformers/Translation_transformer/my-translat-transformer/data/GPT_dset_DG3/static_obs/GPTdset_DG3_g100x100x120_r5k_Obsv1_multi_ran_stat/Gathered_datasets/gathered_4_50_5k_v2_train/gathered_4.pkl"
+# dataset_path: "/home/rohit/Documents/Research/Planning_with_transformers/Translation_transformer/my-translat-transformer/data/GPT_dset_DG3/static_obs/GPTdset_DG3_g100x100x120_r5k_Obsv1_multi_ran_stat/Gathered_datasets/gathered_6_1_5k_v2_train/gathered_6.pkl"
+# dataset_path: "/home/rohit/Documents/Research/Planning_with_transformers/Translation_transformer/my-translat-transformer/data/GPT_dset_DG3/static_obs/GPTdset_DG3_g100x100x120_r5k_Obsv1_w5_1dataset_v1.pkl"
 # dataset_path: "/home/rohit/Documents/Research/Planning_with_transformers/Translation_transformer/my-translat-transformer/data/GPT_dset_DG3/static_obs/GPTdset_DG3_g100x100x120_r5k_Obsv1_w5_1dataset_single_25305.pkl"
+# S1
+# dataset_path: "/home/rohit/Documents/Research/Planning_with_transformers/Translation_transformer/my-translat-transformer/data/GPT_dset_DG3/static_obs/GPTdset_DG3_g100x100x120_r5k_Obsv1_w5_1dataset_single_25305.pkl"
+# S2 amd S3: 
+dataset_path: "/home/rohit/Documents/Research/Planning_with_transformers/Translation_transformer/my-translat-transformer/data/GPT_dset_DG3/static_obs/GPTdset_DG3_g100x100x120_r5k_Obsv1_w5_1dataset_v2.pkl"
+
 log_dir: "log"
 params2_name: "data/GPT_dset_DG3/static_obs/GPTdset_DG3_g100x100x120_r5k_Obsv1_w5_1/params.yml"
 
@@ -26,30 +35,30 @@ split_tr_tst_val: [0.8, 0.05, 0.15]
 
 split_ran_seed: 42
 comp_val_loss: False
-translate_earlybreaks: [50, 200, 500]
+translate_earlybreaks: [50, 50, 500] #tr, val, test
 
 max_eval_ep_len: 120
 num_eval_ep: 300
-eval_inerval: 10
-batch_size: 32
+eval_inerval: 5
+batch_size: 64
 
 optimizer_name: 'AdamW'
 lr: 0.001
-final_lr: 0.0001
+final_lr: 0.00001
 use_scheduler: True
 wt_decay: 0.001
 warmup_steps: 10000
-num_epochs: 300
+num_epochs: 70
 num_updates_per_iter: 500
 add_target_loss: False
 a_tl: 1000
 
 target_conditioning: False 
-num_encoder_layers: 16
-num_decoder_layers: 1
-context_len: 120
+num_encoder_layers: 4
+num_decoder_layers: 4
+context_len: 122
 embed_dim: 64
-n_heads: 16
+n_heads: 8
 dropout_p: 0.1
 
 # mlp_bc

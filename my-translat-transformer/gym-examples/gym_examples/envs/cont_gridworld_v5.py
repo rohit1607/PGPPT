@@ -109,7 +109,7 @@ class ContGridWorld_v5(gym.Env):
         if self.if_scale_velocity:
             self.scale_velocity()
         # Uncomment for DOLS
-        # self.scale_velocity()
+        self.scale_velocity()
 
         self.Umax, self.Vmax = np.max(self.U), np.max(self.V)
         self.Umean, self.Vmean = np.mean(np.abs(self.U)), np.mean(np.abs(self.V))

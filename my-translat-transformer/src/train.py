@@ -26,7 +26,7 @@ import os
 from transformers import get_cosine_with_hard_restarts_schedule_with_warmup
 from PIL import ImageFile
 ImageFile.LOAD_TRUNCATED_IMAGES = True
-from paper_plots import paper_plots
+from GPT_paper_plots import paper_plots
 
 wandb.login()
 
@@ -120,8 +120,8 @@ def train_epoch(model, optimizer, tr_set, cfg, args, scheduler=None, log_interva
         # mask_for_loss = torch.cat([~tgt_padding_mask[:,1:],tgt_padding_mask[:,0]])
        
         # only consider non padded elements (except one at the end)
-        logits_ =  logits.view(-1,1)[(~tgt_padding_mask).view(-1,)]
-        tgt_out_ = tgt_out.reshape(-1,1)[(~tgt_padding_mask).view(-1,)]
+        # logits_ =  logits.view(-1,1)[(~tgt_padding_mask).view(-1,)]
+        # tgt_out_ = tgt_out.reshape(-1,1)[(~tgt_padding_mask).view(-1,)]
 
         # only considers purely non-padded elements in predictions
         logits =  logits.view(-1,1)[mask_for_loss.view(-1,)]
@@ -164,7 +164,7 @@ def evaluate(model, val_set, cfg, log_interval=10):
     model.eval()
     # losses = 0
     avg_loss = 0
-    bs = cfg.batch_size*10
+    bs = cfg.batch_size
     val_dataloader = DataLoader(val_set, batch_size=bs, shuffle=True)
 
     count=  0
@@ -184,9 +184,9 @@ def evaluate(model, val_set, cfg, log_interval=10):
         mask_for_loss[:,-1] = tgt_padding_mask[:,0]
         # mask_for_loss = torch.cat([~tgt_padding_mask[:,1:],tgt_padding_mask[:,0]])
        
-        # only consider non padded elements (except one at the end)
-        logits_ =  logits.view(-1,1)[(~tgt_padding_mask).view(-1,)]
-        tgt_out_ = tgt_out.reshape(-1,1)[(~tgt_padding_mask).view(-1,)]
+        # # only consider non padded elements (except one at the end)
+        # logits_ =  logits.view(-1,1)[(~tgt_padding_mask).view(-1,)]
+        # tgt_out_ = tgt_out.reshape(-1,1)[(~tgt_padding_mask).view(-1,)]
 
         # only considers purely non-padded elements in predictions
         logits =  logits.view(-1,1)[mask_for_loss.view(-1,)]
@@ -220,8 +220,8 @@ def translate(model: torch.nn.Module, test_idx, test_set, tr_set_stats, cfg, ear
         # timesteps, tgt, traj_mask, target_state, env_coef_seq, traj_len, idx = test_set[sample]
 
         for timesteps, tgt, traj_mask, target_state, env_coef_seq, traj_len, idx, flow_dir, rzn in test_dataloader:
-            # if idx%100==0:
-            #     print(idx)
+            if idx%100==0:
+                print(idx)
             # translate_one_rzn = timer()
             # set up environment
             flow_dir = flow_dir[0]
@@ -440,15 +440,18 @@ def train_model(args=None, cfg_name=None):
     env_4_viz = setup_env(dummy_flow_dir)
     
     # # for Debugging
-    break_at = 100
-    visualize_input(tr_set, log_wandb=True, at_time=99, env=env_4_viz, break_at=break_at)
+    break_at = 500
+
+    visualize_input(tr_set, log_wandb=True, at_time=119, env=env_4_viz, break_at=break_at)
     simulate_tgt_actions(tr_set,
                             env=env_4_viz,
                             log_wandb=True,
                             wandb_fname='simulate_tgt_actions',
                             plot_flow=True,
-                            at_time=100,
+                            at_time=119,
                             break_at=break_at)
+    
+    # sys.exit(0)
     
     transformer = mySeq2SeqTransformer_v1(num_encoder_layers, num_decoder_layers, embed_dim,
                                  n_heads, src_vec_dim, tgt_vec_dim, 
@@ -681,17 +684,22 @@ class jugaad_cfg:
         self.device = device
 
 def load_prev_and_test(args, cfg_name):
-
+    wandb_exp_name = "dummy"
+    wandb.init(project="translation-transformer",
+        name = wandb_exp_name,
+        )
     # load model
     # tmp_path = ROOT + "log/my_translat_GPTdset_DG3_model_04-01-03-20.pt"
     # ROOT = /home/rohit/Documents/Research/Planning_with_transformers/Translation_transformer/my-translat-transformer/
-    tmp_path = ROOT + "log/my_translat_DOLS_Cylinder_model_06-21-14-57.pt" 
+    tmp_path = ROOT + "log/my_translat_GPTdset_DG3_model_08-24-17-28.pt" 
+    
     transformer = torch.load(tmp_path)
     model_name = tmp_path[:-3].split('/')[-1]
     # load unseen dataset
-    targ = '5'
+    d_no = '5'
     dset = 'test'
-    dataset_path = ROOT + f"data/DOLS_Cylinder/targ_{targ}/gathered_targ_{targ}.pkl"
+    # dataset_path = ROOT + f"data/DOLS_Cylinder/targ_{targ}/gathered_targ_{targ}.pkl"
+    dataset_path = '/home/rohit/Documents/Research/Planning_with_transformers/Translation_transformer/my-translat-transformer/data/GPT_dset_DG3/static_obs/GPTdset_DG3_g100x100x120_r5k_Obsv1_multi_ran_stat/Gathered_datasets/gathered_10_0_5k_test/gathered_10.pkl'
     traj_dataset = load_pkl(dataset_path)
     dataset_name = dataset_path[:-4].split('/')[-1]
     # src_stats_path = tmp_path[:-3] + "_src_stats.npy"
@@ -707,19 +715,19 @@ def load_prev_and_test(args, cfg_name):
     us_train_idx_set, us_test_idx_set, us_val_idx_set = idx_split
     us_train_traj_set = create_action_dataset_v2(us_train_traj_set, 
                             idx_set=[None],
-                            context_len=101,
+                            context_len=120,
                             # norm_params_4_val = src_stats
                                         )
     # _, _, us_test_traj_set = set_split
     # _, _, us_test_idx_set = idx_split
     us_val_traj_set = create_action_dataset_v2(us_val_traj_set, 
                             idx_set=[None],
-                            context_len=101,
+                            context_len=120,
                             norm_params_4_val = src_stats
                                         )
     us_test_traj_set = create_action_dataset_v2(us_test_traj_set, 
                             idx_set=[None],
-                            context_len=101,
+                            context_len=120,
                             norm_params_4_val = src_stats
                                         )
     
@@ -728,25 +736,51 @@ def load_prev_and_test(args, cfg_name):
     # read cfg not working and requires postprocessing 
     # cfg_path =  tmp_path[:-3] + ".yml"
     # cfg =  read_cfg_file(cfg_path)
-    cfg = jugaad_cfg(context_len=101, device='cuda')
+    cfg = jugaad_cfg(context_len=120, device='cuda')
     # translate_start_time = timer()
-
-
-    op_traj_dict_list, results = translate(transformer,us_test_idx_set, us_test_traj_set, 
+    _, dummy_target, _, _, dummy_env_coef_seq, _,_,dummy_flow_dir,_ = us_train_traj_set[0]
+    src_vec_dim = dummy_env_coef_seq.shape[-1]
+    tgt_vec_dim = dummy_target.shape[-1]
+    print(f"src_vec_dim = {src_vec_dim} \n tgt_vec_dim = {tgt_vec_dim}")
+    
+    # intantiate gym env for vizualization purposes
+    env_4_viz = setup_env(dummy_flow_dir)
+    simulate_tgt_actions(us_train_traj_set,
+                            env=env_4_viz,
+                            log_wandb=True,
+                            wandb_fname='simulate_tgt_actions',
+                            plot_flow=True,
+                            at_time=119,
+                            break_at=500)
+    
+    op_traj_dict_list, results = translate(transformer,us_train_idx_set, us_train_traj_set, 
                                             None, cfg, earlybreak=500)
     # translate_end_time = timer()
     # print(f"Translate runtime = {(translate_end_time - translate_start_time):.3f}s")
-    os.makedirs(os.path.dirname(ROOT + f"paper_plots/{model_name}/DOLS_targ_{targ}/{dset}_op_traj_dict_list.pkl"),exist_ok=True)
-    os.makedirs(os.path.dirname(ROOT + f"paper_plots/{model_name}/DOLS_targ_{targ}/{dset}_results.pkl"), exist_ok=True)
-    save_object(op_traj_dict_list, os.path.join(ROOT, f"paper_plots/{model_name}/DOLS_targ_{targ}/{dset}_op_traj_dict_list.pkl"))
-    save_object(results,os.path.join(ROOT, f"paper_plots/{model_name}/DOLS_targ_{targ}/{dset}_results.pkl"))
+    # os.makedirs(os.path.dirname(ROOT + f"paper_plots/{model_name}/DOLS_targ_{targ}/{dset}_op_traj_dict_list.pkl"),exist_ok=True)
+    # os.makedirs(os.path.dirname(ROOT + f"paper_plots/{model_name}/DOLS_targ_{targ}/{dset}_results.pkl"), exist_ok=True)
+    # save_object(op_traj_dict_list, os.path.join(ROOT, f"paper_plots/{model_name}/DOLS_targ_{targ}/{dset}_op_traj_dict_list.pkl"))
+    # save_object(results,os.path.join(ROOT, f"paper_plots/{model_name}/DOLS_targ_{targ}/{dset}_results.pkl"))
 
-    op_traj_dict_list = load_pkl(os.path.join(ROOT, f"paper_plots/{model_name}/DOLS_targ_{targ}/{dset}_op_traj_dict_list.pkl"))
-    results = load_pkl(os.path.join(ROOT, f"paper_plots/{model_name}/DOLS_targ_{targ}/{dset}_results.pkl"))
+    # op_traj_dict_list = load_pkl(os.path.join(ROOT, f"paper_plots/{model_name}/DOLS_targ_{targ}/{dset}_op_traj_dict_list.pkl"))
+    # results = load_pkl(os.path.join(ROOT, f"paper_plots/{model_name}/DOLS_targ_{targ}/{dset}_results.pkl"))
+    # _, dummy_target, _, _, dummy_env_coef_seq, _,_,dummy_flow_dir,_ = us_val_traj_set[0]
+    # # intantiate gym env for vizualization purposes
+    # env_4_viz = setup_env(dummy_flow_dir)
+    
+    os.makedirs(os.path.dirname(ROOT + f"paper_plots/{model_name}/{dataset_name}/{dset}_op_traj_dict_list.pkl"),exist_ok=True)
+    os.makedirs(os.path.dirname(ROOT + f"paper_plots/{model_name}/{dataset_name}/{dset}_results.pkl"), exist_ok=True)
+    save_object(op_traj_dict_list, os.path.join(ROOT, f"paper_plots/{model_name}/{dataset_name}/{dset}_op_traj_dict_list.pkl"))
+    save_object(results,os.path.join(ROOT, f"paper_plots/{model_name}/{dataset_name}/{dset}_results.pkl"))
+
+    op_traj_dict_list = load_pkl(os.path.join(ROOT, f"paper_plots/{model_name}/{dataset_name}/{dset}_op_traj_dict_list.pkl"))
+    results = load_pkl(os.path.join(ROOT, f"paper_plots/{model_name}/{dataset_name}/{dset}_results.pkl"))
     _, dummy_target, _, _, dummy_env_coef_seq, _,_,dummy_flow_dir,_ = us_val_traj_set[0]
     # intantiate gym env for vizualization purposes
     env_4_viz = setup_env(dummy_flow_dir)
-
+    
+    
+    
     test_set_txy_preds = [d['states'] for d in op_traj_dict_list]
     path_lens = [d['n_tsteps'] for d in op_traj_dict_list]
     all_att_mat_list =  [d['all_att_mat'] for d in op_traj_dict_list]
@@ -755,7 +789,8 @@ def load_prev_and_test(args, cfg_name):
     
     # taken from vis_traj_with_attention.py in decision transformer project
     print(f"model_name = {model_name}")
-    save_dir = "paper_plots/"  + model_name + f"/DOLS_targ_{targ}/increased_cbar"
+    # save_dir = "paper_plots/"  + model_name + f"/DOLS_targ_{targ}/increased_cbar"
+    save_dir = "paper_plots/"  + model_name + f"/{dataset_name}/translation"    
     save_dir = join(ROOT,save_dir)
     if not os.path.exists(save_dir):
         os.mkdir(save_dir)
@@ -773,7 +808,7 @@ def load_prev_and_test(args, cfg_name):
                         paper_plot_info=paper_plot_info,
                         save_dir=save_dir)
     pp.plot_val_ip_op(us_test_traj_set, test_set_txy_preds, path_lens, success_list)
-    pp.plot_trajs_ip_op(us_test_traj_set, test_set_txy_preds, path_lens, success_list)
+    # pp.plot_trajs_ip_op(us_test_traj_set, test_set_txy_preds, path_lens, success_list)
     # pp.plot_velocity_obstacle()
     # pp.plot_actions(us_test_traj_set, test_set_txy_preds, path_lens, success_list, actions)
     
@@ -866,7 +901,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument('--mode', type=str, default='single_run')
     parser.add_argument('--quick_run', type=bool, default=False)
-    parser.add_argument('--CFG', type=str, default='v5_DOLS')
+    parser.add_argument('--CFG', type=str, default='v5_GPT_DG3')
     args = parser.parse_args()
 
     cfg_name = "cfg/contGrid_" + args.CFG

@@ -11,12 +11,12 @@
             "program": "${file}",
             "console": "integratedTerminal",
             "justMyCode": true,
-            // "args": ["--CFG", "v5_GPT_DG3", "--mode", "load_prev_and_test"],
+            // "args": ["--CFG", "v5_GPT_DG3", "--mode", "single_run"],
             "args": [
                 "--CFG",
                 "v5_GPT_DG3",
                 "--mode",
-                "single_run"
+                "load_prev_and_test"
             ],
             "env": {
                 "CUDA_VISIBLE_DEVICES": "1"
