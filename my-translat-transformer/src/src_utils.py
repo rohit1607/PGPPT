@@ -16,6 +16,7 @@ from os.path import join
 from root_path import ROOT
 import sys
 import time
+import os
 
 TXY_MEAN = np.array([35.34795 , 41.64394 , 44.63251 ])
 TXY_STD = np.array([20.757399, 14.942655, 18.891838])
@@ -921,6 +922,8 @@ def visualize_input(traj_dataset,
     print(" ---- Visualizing input ---- ")
 
     path = join(ROOT, "tmp/last_exp_figs/")
+    if not os.path.exists(path):
+        os.makedirs(path)
     fname = path + "input_traj" + info_str + data_name + ".png"
 
     fig = plt.figure()

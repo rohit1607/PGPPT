@@ -29,21 +29,22 @@ ImageFile.LOAD_TRUNCATED_IMAGES = True
 from GPT_paper_plots import paper_plots
 
 wandb.login()
-
+OLD_ROOT = "/home/rohit/Documents/Research/Planning_with_transformers/Translation_transformer/my-translat-transformer"
 DATASET_CREATION_MAP = {"DOLS": create_action_dataset_v2,
                         # "GenHW": create_action_dataset_v3,
                         # "GPT_dset": verify TODO
                         }
 
 
-def setup_env(flow_dir):
+def setup_env(flow_dir, old_root):
     flow_specific_cfg = read_cfg_file(cfg_name=join(flow_dir,"cfg_used_in_proc_data.yml"))
     env_name = flow_specific_cfg["env_name"]
     params2 = read_cfg_file(cfg_name=join(flow_dir,"params.yml"))
     env = gym.make(env_name)
     # # IMP: CLEAN CODE
     # env.if_scale_velocity = True
-    env.setup(flow_specific_cfg, params2, add_trans_noise=False)
+    env.setup(flow_specific_cfg, params2, add_trans_noise=False, 
+              old_root=old_root, current_root=ROOT)
     return env
 
 def extract_attention_scores(model):
@@ -156,7 +157,9 @@ def train_epoch(model, optimizer, tr_set, cfg, args, scheduler=None, log_interva
                        })
         count += 1
 
-    all_att_mats = extract_attention_scores(model)
+    # Note: attention extraction was done by modificatin in the library. 
+    # all_att_mats = extract_attention_scores(model)
+    all_att_mats = None
     return avg_loss, all_att_mats
 
 
@@ -203,7 +206,8 @@ def evaluate(model, val_set, cfg, log_interval=10):
             wandb.log({f"in_eval/avg_val_loss vs log_intervalth update": avg_loss})
         count += 1
 
-    all_att_mats = extract_attention_scores(model)
+    # all_att_mats = extract_attention_scores(model)
+    all_att_mats = None
     return avg_loss, all_att_mats
 
 
@@ -225,8 +229,8 @@ def translate(model: torch.nn.Module, test_idx, test_set, tr_set_stats, cfg, ear
             # translate_one_rzn = timer()
             # set up environment
             flow_dir = flow_dir[0]
-
-            env = setup_env(flow_dir)
+            flow_dir = flow_dir.replace(OLD_ROOT, ROOT)
+            env = setup_env(flow_dir, OLD_ROOT)
 
             op_traj_dict = {}
             reached_target = False
@@ -284,7 +288,7 @@ def translate(model: torch.nn.Module, test_idx, test_set, tr_set_stats, cfg, ear
             # op_traj_dict['attention_weights'] = attention_weights
             op_traj_dict['success'] = reached_target
             op_traj_dict['mse'] = mse
-            op_traj_dict['all_att_mat'] = extract_attention_scores(model)
+            # op_traj_dict['all_att_mat'] = extract_attention_scores(model)
             # op_traj_dict['states_for_action_labels'] = np.array(TXY_PREDS_)
             op_traj_dict['states_for_action_labels'] = None
             op_traj_dict['action_labels'] = tgt.cpu()*2*np.pi
@@ -437,8 +441,11 @@ def train_model(args=None, cfg_name=None):
     print(f"src_vec_dim = {src_vec_dim} \n tgt_vec_dim = {tgt_vec_dim}")
     
     # intantiate gym env for vizualization purposes
-    env_4_viz = setup_env(dummy_flow_dir)
-    
+    # old root is needed because params_in_proc data config file has 
+    # references to paths on the machine used for dataset creation
+    dummy_flow_dir = dummy_flow_dir.replace(OLD_ROOT, ROOT)
+    env_4_viz = setup_env(dummy_flow_dir, OLD_ROOT)
+ 
     # # for Debugging
     break_at = 500
 
@@ -496,6 +503,7 @@ def train_model(args=None, cfg_name=None):
     wandb.run.summary["total params"] = pytorch_total_params
     wandb.run.summary["trainable params"] = pytorch_trainable_params
 
+    print(f"{len(tr_set)=}")
 
     min_ETA = 10**5
     max_sr = -1
@@ -513,136 +521,138 @@ def train_model(args=None, cfg_name=None):
         wandb.log({f"in_eval/lr":  scheduler.get_last_lr()[0]
                        })
         
-        # Evalutation by translation   
-        if epoch % eval_inerval == 0:
-            print("plotting attention")
-            plot_all_attention_mats(tr_all_att_mat)
-            plot_all_attention_mats(val_all_att_mat)
-            print("translating")
-            tr_op_traj_dict_list, tr_results = translate(transformer, train_idx_set, tr_set, None, 
-                                                   cfg, earlybreak=tt_eb[0])
+        # # TODO: requires all data to be here
+        # # Evalutation by translation   
+        # if epoch % eval_inerval == 0:
+        #     print("plotting attention")
+        #     # TODO: using the plot_all_attention_mats requires library changes to get attention
+        #     # plot_all_attention_mats(tr_all_att_mat)
+        #     # plot_all_attention_mats(val_all_att_mat)
+        #     print("translating")
+        #     tr_op_traj_dict_list, tr_results = translate(transformer, train_idx_set, tr_set, None, 
+        #                                            cfg, earlybreak=tt_eb[0])
             
-            tr_set_txy_preds = [d['states'] for d in tr_op_traj_dict_list]
-            all_att_mat_list =  [d['all_att_mat'] for d in tr_op_traj_dict_list]
+        #     tr_set_txy_preds = [d['states'] for d in tr_op_traj_dict_list]
+        #     all_att_mat_list =  [d['all_att_mat'] for d in tr_op_traj_dict_list]
 
 
-            path_lens = [d['n_tsteps'] for d in tr_op_traj_dict_list]
-            visualize_output(tr_set_txy_preds, 
-                                path_lens,
-                                iter_i = 0, 
-                                stats=None, 
-                                env=env_4_viz, 
-                                log_wandb=True, 
-                                plot_policy=False,
-                                traj_idx=None,      #None = all, list of rzn_ids []
-                                show_scatter=False,
-                                at_time=None,
-                                color_by_time=True, #TODO: fix tdone issue in src_utils
-                                plot_flow=True,
-                                wandb_suffix="train")
+        #     path_lens = [d['n_tsteps'] for d in tr_op_traj_dict_list]
+        #     visualize_output(tr_set_txy_preds, 
+        #                         path_lens,
+        #                         iter_i = 0, 
+        #                         stats=None, 
+        #                         env=env_4_viz, 
+        #                         log_wandb=True, 
+        #                         plot_policy=False,
+        #                         traj_idx=None,      #None = all, list of rzn_ids []
+        #                         show_scatter=False,
+        #                         at_time=None,
+        #                         color_by_time=True, #TODO: fix tdone issue in src_utils
+        #                         plot_flow=True,
+        #                         wandb_suffix="train")
             
-            # compare_trajectories(tr_op_traj_dict_list,
-            #                     path_lens,
-            #                     iter_i = 0, 
-            #                     stats=None, 
-            #                     env=env_4_viz, 
-            #                     log_wandb=True, 
-            #                     plot_policy=True,
-            #                     traj_idx=[1, 5,],      #None=all, list of rzn_ids []
-            #                     show_scatter=True,
-            #                     at_time=None,
-            #                     color_by_time=True, #TODO: fix tdone issue in src_utils
-            #                     plot_flow=True,
-            #                     wandb_suffix="train")   
+        #     # compare_trajectories(tr_op_traj_dict_list,
+        #     #                     path_lens,
+        #     #                     iter_i = 0, 
+        #     #                     stats=None, 
+        #     #                     env=env_4_viz, 
+        #     #                     log_wandb=True, 
+        #     #                     plot_policy=True,
+        #     #                     traj_idx=[1, 5,],      #None=all, list of rzn_ids []
+        #     #                     show_scatter=True,
+        #     #                     at_time=None,
+        #     #                     color_by_time=True, #TODO: fix tdone issue in src_utils
+        #     #                     plot_flow=True,
+        #     #                     wandb_suffix="train")   
             
-      
-            viz_op_traj_with_attention(tr_set_txy_preds,
-                                all_att_mat_list, # could be enc_sa, dec_sa, dec_ga
-                                path_lens,
-                                mode='dec_sa',       #or 'a_s_attention'
-                                average_across_layers=True,
-                                stats=None, 
-                                env=env_4_viz, 
-                                log_wandb=True, 
-                                scale_each_row=True,
-                                plot_policy=False,
-                                traj_idx=None,      #None=all, list of rzn_ids []
-                                show_scatter=False,
-                                plot_flow=True,
-                                at_time=88,
-                                model_name="DOLS"+"_on_"+dataset_name
-                                )  
+        #     # Uncomment again once attanetion hook is reaplied or alternative found
+        #     # viz_op_traj_with_attention(tr_set_txy_preds,
+        #     #                     all_att_mat_list, # could be enc_sa, dec_sa, dec_ga
+        #     #                     path_lens,
+        #     #                     mode='dec_sa',       #or 'a_s_attention'
+        #     #                     average_across_layers=True,
+        #     #                     stats=None, 
+        #     #                     env=env_4_viz, 
+        #     #                     log_wandb=True, 
+        #     #                     scale_each_row=True,
+        #     #                     plot_policy=False,
+        #     #                     traj_idx=None,      #None=all, list of rzn_ids []
+        #     #                     show_scatter=False,
+        #     #                     plot_flow=True,
+        #     #                     at_time=88,
+        #     #                     model_name="DOLS"+"_on_"+dataset_name
+        #     #                     )  
                         
-            val_op_traj_dict_list, val_results = translate(transformer, val_idx_set, val_set, None, 
-                                                           cfg, earlybreak=tt_eb[1])
-            val_set_txy_preds = [d['states'] for d in val_op_traj_dict_list]
-            path_lens = [d['n_tsteps'] for d in val_op_traj_dict_list]
-            visualize_output(val_set_txy_preds, 
-                                path_lens,
-                                iter_i = 0, 
-                                stats=None, 
-                                env=env_4_viz, 
-                                log_wandb=True, 
-                                plot_policy=False,
-                                traj_idx=None,      #None=all, list of rzn_ids []
-                                show_scatter=True,
-                                at_time=None,
-                                color_by_time=True, #TODO: fix tdone issue in src_utils
-                                plot_flow=True,
-                                wandb_suffix="val") 
+        #     val_op_traj_dict_list, val_results = translate(transformer, val_idx_set, val_set, None, 
+        #                                                    cfg, earlybreak=tt_eb[1])
+        #     val_set_txy_preds = [d['states'] for d in val_op_traj_dict_list]
+        #     path_lens = [d['n_tsteps'] for d in val_op_traj_dict_list]
+        #     visualize_output(val_set_txy_preds, 
+        #                         path_lens,
+        #                         iter_i = 0, 
+        #                         stats=None, 
+        #                         env=env_4_viz, 
+        #                         log_wandb=True, 
+        #                         plot_policy=False,
+        #                         traj_idx=None,      #None=all, list of rzn_ids []
+        #                         show_scatter=True,
+        #                         at_time=None,
+        #                         color_by_time=True, #TODO: fix tdone issue in src_utils
+        #                         plot_flow=True,
+        #                         wandb_suffix="val") 
 
-        #Note: val_results get updated after eval_inerval
-        translate_avg_ep_len = val_results['translate/avg_ep_len']
-        translate_avg_val_loss = val_results['avg_val_loss']
-        success_ratio = val_results['translate/success_ratio']
-        tr_success_ratio = tr_results['translate/success_ratio']
-        count = val_results['runs_from_set(count)'] 
-        log_dict = { "tr_loss_vs_epoch (unpadded elems)": train_loss,
-            "val_loss_vs_epoch (unpadded elems)": val_loss,
-            "avg_val_loss (across pred len)": translate_avg_val_loss,
-            "success_ratio": success_ratio,
-            "succes_ratio (train)": tr_success_ratio,
-            'runs_from_set(count)': count,
-            "ETA": translate_avg_ep_len,
-            # "lr" : scheduler.get_last_lr()[0] if use_scheduler else lr
-            }
-        wandb.log(log_dict)
+        # #Note: val_results get updated after eval_inerval
+        # translate_avg_ep_len = val_results['translate/avg_ep_len']
+        # translate_avg_val_loss = val_results['avg_val_loss']
+        # success_ratio = val_results['translate/success_ratio']
+        # tr_success_ratio = tr_results['translate/success_ratio']
+        # count = val_results['runs_from_set(count)'] 
+        # log_dict = { "tr_loss_vs_epoch (unpadded elems)": train_loss,
+        #     "val_loss_vs_epoch (unpadded elems)": val_loss,
+        #     "avg_val_loss (across pred len)": translate_avg_val_loss,
+        #     "success_ratio": success_ratio,
+        #     "succes_ratio (train)": tr_success_ratio,
+        #     'runs_from_set(count)': count,
+        #     "ETA": translate_avg_ep_len,
+        #     # "lr" : scheduler.get_last_lr()[0] if use_scheduler else lr
+        #     }
+        # wandb.log(log_dict)
 
-
+    
         time_elapsed = str(datetime.now().replace(microsecond=0) - start_time)
         print('='*60)
         print(f"Epoch: {epoch}")
-        for key, val in log_dict.items():
-            print(f"{key}: {format(val,'.4f')}")
+        # for key, val in log_dict.items():
+        #     print(f"{key}: {format(val,'.4f')}")
         print(f"Epoch runtime = {(epoch_end_time - epoch_start_time):.3f}s")
         print(f"time elapsed: {time_elapsed}")
         print("")
  
         
-        # TODO: save model and best metrics after completing evaluation
+        # TODO: need to translate to save model. commenting for now
         # if translate_avg_ep_len < min_ETA:
-        if success_ratio > max_sr:
-            # min_ETA = translate_avg_ep_len
-            max_sr = success_ratio
-            print("saving current model at: " + save_model_path)
+        # if success_ratio > max_sr:
+        #     # min_ETA = translate_avg_ep_len
+        #     max_sr = success_ratio
+        #     print("saving current model at: " + save_model_path)
 
-            best_avg_episode_length = translate_avg_ep_len
-            best_success_ratio = success_ratio
-            best_epoch = epoch
-            # "avg_val_loss"= eval_avg_val_loss
+        #     best_avg_episode_length = translate_avg_ep_len
+        #     best_success_ratio = success_ratio
+        #     best_epoch = epoch
+        #     # "avg_val_loss"= eval_avg_val_loss
 
-            torch.save(transformer, save_model_path)
-            tmp_path = save_model_path[:-1]
-            torch.save(transformer, tmp_path)
+        #     torch.save(transformer, save_model_path)
+        #     tmp_path = save_model_path[:-1]
+        #     torch.save(transformer, tmp_path)
 
-
+    tmp_path = save_model_path[:-1]
     cfg_copy_path = save_model_path[:-2] + "yml"
     save_yaml(cfg_copy_path,cfg)
     print(f"cfg_copy_path = {cfg_copy_path}")
-    wandb.run.summary["best_avg_episode_length"] = best_avg_episode_length
-    wandb.run.summary["best_success_ratio"] = best_success_ratio
-    wandb.run.summary["total_runs_val_set"] = len(val_op_traj_dict_list)
-    wandb.run.summary["best_epoch"] = best_epoch
+    # wandb.run.summary["best_avg_episode_length"] = best_avg_episode_length
+    # wandb.run.summary["best_success_ratio"] = best_success_ratio
+    # wandb.run.summary["total_runs_val_set"] = len(val_op_traj_dict_list)
+    # wandb.run.summary["best_epoch"] = best_epoch
 
     print("=" * 60)
     print("finished training!")
@@ -650,23 +660,27 @@ def train_model(args=None, cfg_name=None):
 
     print(f"\n\n ---- running inference on test set ----- \n\n")
     transformer = torch.load(tmp_path)
-    op_traj_dict_list, results  = translate(transformer,test_idx_set, test_set, 
-                                            None, cfg, earlybreak=tt_eb[2])
-    test_set_txy_preds = [d['states'] for d in op_traj_dict_list]
-    path_lens = [d['n_tsteps'] for d in op_traj_dict_list]  
-    visualize_output(test_set_txy_preds, 
-                        path_lens,
-                        iter_i = 0, 
-                        stats=None, 
-                        env=env_4_viz, 
-                        log_wandb=True, 
-                        plot_policy=False,
-                        traj_idx=None,      #None=all, list of rzn_ids []
-                        show_scatter=True,
-                        at_time=None,
-                        color_by_time=True, #TODO: fix tdone issue in src_utils
-                        plot_flow=True,
-                        wandb_suffix="test")
+    try:
+        op_traj_dict_list, results  = translate(transformer,test_idx_set, test_set, 
+                                                None, cfg, earlybreak=tt_eb[2])
+        test_set_txy_preds = [d['states'] for d in op_traj_dict_list]
+        path_lens = [d['n_tsteps'] for d in op_traj_dict_list]  
+        visualize_output(test_set_txy_preds, 
+                            path_lens,
+                            iter_i = 0, 
+                            stats=None, 
+                            env=env_4_viz, 
+                            log_wandb=True, 
+                            plot_policy=False,
+                            traj_idx=None,      #None=all, list of rzn_ids []
+                            show_scatter=True,
+                            at_time=None,
+                            color_by_time=True, #TODO: fix tdone issue in src_utils
+                            plot_flow=True,
+                            wandb_suffix="test")
+    except:
+        print("probably data missing")
+        print(f"test_set path = {test_set[0][-2]}")
     
     end_time = datetime.now().replace(microsecond=0)
     end_time_str = end_time.strftime("%y-%m-%d-%H-%M-%S")
@@ -676,7 +690,8 @@ def train_model(args=None, cfg_name=None):
     print("saved last updated model at: " + save_model_path)
     print("=" * 60)
 
-    return best_avg_episode_length
+    # return best_avg_episode_length
+    return
 
 class jugaad_cfg:
     def __init__(self, context_len, device):
@@ -744,7 +759,7 @@ def load_prev_and_test(args, cfg_name):
     print(f"src_vec_dim = {src_vec_dim} \n tgt_vec_dim = {tgt_vec_dim}")
     
     # intantiate gym env for vizualization purposes
-    env_4_viz = setup_env(dummy_flow_dir)
+    env_4_viz = setup_env(dummy_flow_dir, OLD_ROOT)
     simulate_tgt_actions(us_train_traj_set,
                             env=env_4_viz,
                             log_wandb=True,
@@ -777,7 +792,7 @@ def load_prev_and_test(args, cfg_name):
     results = load_pkl(os.path.join(ROOT, f"paper_plots/{model_name}/{dataset_name}/{dset}_results.pkl"))
     _, dummy_target, _, _, dummy_env_coef_seq, _,_,dummy_flow_dir,_ = us_val_traj_set[0]
     # intantiate gym env for vizualization purposes
-    env_4_viz = setup_env(dummy_flow_dir)
+    env_4_viz = setup_env(dummy_flow_dir, OLD_ROOT)
     
     
     

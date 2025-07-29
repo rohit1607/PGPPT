@@ -42,7 +42,9 @@ class ContGridWorld_v5(gym.Env):
         
         return
 
-    def setup(self, cfg, params2, rzn=0, add_trans_noise=False):
+    def setup(self, cfg, params2, rzn=0, add_trans_noise=False, 
+              old_root="",
+              current_root=""):
         """
         To be called expicitly to retreive params
         cfg: dict laoded from a yaml file
@@ -82,7 +84,8 @@ class ContGridWorld_v5(gym.Env):
         self.state = self.reset()
 
         # self.target_state = np.array(self.target_pos, dtype=np.float32).reshape(2,).copy()
-
+        if old_root in self.vel_fname:
+            self.vel_fname = self.vel_fname.replace(old_root, current_root)
         self.obs_mask = np.load((join(self.vel_fname, "obstacle_mask.npy")))
         # Load vel field
         self.U = np.load(join(self.vel_fname,"all_u_mat.npy"))
