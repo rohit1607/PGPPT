@@ -9,24 +9,6 @@ import torch.nn as nn
 from torch.nn import Transformer
 import math
 
-
-# class EncoderRNN(nn.Module):
-#     def __init__(self, input_size, hidden_size):
-#         super(EncoderRNN, self).__init__()
-#         self.hidden_size = hidden_size
-#         self.embedding = nn.Linear(input_size, hidden_size)
-#         self.gru = nn.GRU(hidden_size, hidden_size)
-
-#     def forward(self, input, hidden):
-#         input = input.type(torch.float32)
-#         embedded = self.embedding(input)
-#         output = embedded
-#         # output = torch.unsqueeze(output, dim=0)
-#         output, hidden = self.gru(output, hidden)
-#         return output, hidden
-
-#     def initHidden(self):
-#         return torch.zeros(1, 32, self.hidden_size)
     
 class EncoderRNN(nn.Module):
     def __init__(self, input_size, hidden_size):

@@ -206,6 +206,7 @@ def evaluate(model, val_set, cfg, log_interval=10):
             wandb.log({f"in_eval/avg_val_loss vs log_intervalth update": avg_loss})
         count += 1
 
+    # NOTE: Uncomment post re-implementation or library-fix
     # all_att_mats = extract_attention_scores(model)
     all_att_mats = None
     return avg_loss, all_att_mats
@@ -256,7 +257,7 @@ def translate(model: torch.nn.Module, test_idx, test_set, tr_set_stats, cfg, ear
             
             txy_preds = np.zeros((1, cfg.context_len+1, 3),dtype=np.float32,)
             txy_preds[0,0,:] = np.array([0,env.start_pos[0],env.start_pos[1]])
-            # TODO: Change. Put in SOS token
+            # NOTE: Find commit where SOS token was used.
             preds[0,0,:] = tgt[0,0,:]
             a = preds[0,0,:].cpu().numpy().copy()
             a = a*2*np.pi
@@ -272,7 +273,7 @@ def translate(model: torch.nn.Module, test_idx, test_set, tr_set_stats, cfg, ear
                 a = a*2*np.pi
                 txy, reward ,done, info = env.step(a)
                 txy_preds[0,i+2,:] = txy 
-                # TODO: ***IMP*****: reduce GPU-CPU communication
+                # NOTE: reduce GPU-CPU communication
                 if done:
                     if reward > 0:
                         reached_target = True
@@ -399,9 +400,7 @@ def train_model(args=None, cfg_name=None):
     print("dataset path: " + dataset_path)
     print("model save path: " + save_model_path)
 
-    # env = gym.make(env_name)
-    # env.setup(cfg, params2, add_trans_noise=add_trans_noise)
-
+ 
     # Load and Split dataset
     with open(dataset_path, 'rb') as f:
         traj_dataset = pickle.load(f)
@@ -446,27 +445,35 @@ def train_model(args=None, cfg_name=None):
     dummy_flow_dir = dummy_flow_dir.replace(OLD_ROOT, ROOT)
     env_4_viz = setup_env(dummy_flow_dir, OLD_ROOT)
  
-    # # for Debugging
-    break_at = 500
-
-    visualize_input(tr_set, log_wandb=True, at_time=119, env=env_4_viz, break_at=break_at)
+    # data visualization for sanity check
+    break_at = 500 #for debugging only
+    if "DG3" in dataset_name:
+        t_viz = 119
+    elif "DOLS" in dataset_name:
+        t_viz = 100
+    else:
+        raise NotImplementedError
+    # plot xy coords of paths from existing solver
+    visualize_input(tr_set, log_wandb=True, at_time=t_viz, env=env_4_viz, break_at=break_at)
+    # simulate actions that were processed from optimal paths.
     simulate_tgt_actions(tr_set,
                             env=env_4_viz,
                             log_wandb=True,
                             wandb_fname='simulate_tgt_actions',
                             plot_flow=True,
-                            at_time=119,
+                            at_time=t_viz,
                             break_at=break_at)
     
-    # sys.exit(0)
     
+    # Instantiate the model
     transformer = mySeq2SeqTransformer_v1(num_encoder_layers, num_decoder_layers, embed_dim,
                                  n_heads, src_vec_dim, tgt_vec_dim, 
-                                 dim_feedforward=None,     # TODO: add dim_ffn to cfg
+                                 dim_feedforward=None,     
                                  max_len=context_len,
                                  positional_encoding="simple"
                                  ).to(cfg.device)
     
+    # Instantiate the optimizer
     if optimizer_name == 'AdamW':
         optimizer = torch.optim.AdamW(
                         transformer.parameters(),
@@ -480,35 +487,29 @@ def train_model(args=None, cfg_name=None):
                                     betas=(0.9, 0.98), 
                                     eps=1e-9, 
                                     )    
-    # main_lr_scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer=optimizer, 
-    #                                                                T_max=num_epochs-3, 
-    #                                                                eta_min = 0.0
-    #                                                                 )
+    # Set up the scheduler
     gamma, _ = see_steplr_trend(step_size=10, num_epochs=num_epochs, lr=lr, final_lr=final_lr)
-    main_lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=10, gamma=gamma)
-    
+    main_lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=10, gamma=gamma)  
     warm_up_scheduler = torch.optim.lr_scheduler.LinearLR(optimizer=optimizer,
                                                           start_factor=0.033,
                                                           total_iters=3
                                                           )
-    
     scheduler = torch.optim.lr_scheduler.SequentialLR(optimizer=optimizer,
                                                       schedulers=[warm_up_scheduler, main_lr_scheduler],
                                                       milestones=[3])
 
+    # Compute number of trainable params
     pytorch_trainable_params = sum(p.numel() for p in transformer.parameters() if p.requires_grad)
     pytorch_total_params = sum(p.numel() for p in transformer.parameters())
     print(f"total params = {pytorch_total_params}")
     print(f"trainable params = {pytorch_trainable_params}")
     wandb.run.summary["total params"] = pytorch_total_params
     wandb.run.summary["trainable params"] = pytorch_trainable_params
-
     print(f"{len(tr_set)=}")
 
+    # Training Loop
     min_ETA = 10**5
     max_sr = -1
-    # train_loss = 0
-    # val_loss = 0
     for epoch in range(0, num_epochs+1):
         print(f"epoch {epoch}")
         epoch_start_time = timer()
@@ -523,7 +524,7 @@ def train_model(args=None, cfg_name=None):
         
         # # TODO: requires all data to be here
         # # Evalutation by translation   
-        # if epoch % eval_inerval == 0:
+        if epoch % eval_inerval == 0:
         #     print("plotting attention")
         #     # TODO: using the plot_all_attention_mats requires library changes to get attention
         #     # plot_all_attention_mats(tr_all_att_mat)
@@ -583,23 +584,23 @@ def train_model(args=None, cfg_name=None):
         #     #                     model_name="DOLS"+"_on_"+dataset_name
         #     #                     )  
                         
-        #     val_op_traj_dict_list, val_results = translate(transformer, val_idx_set, val_set, None, 
-        #                                                    cfg, earlybreak=tt_eb[1])
-        #     val_set_txy_preds = [d['states'] for d in val_op_traj_dict_list]
-        #     path_lens = [d['n_tsteps'] for d in val_op_traj_dict_list]
-        #     visualize_output(val_set_txy_preds, 
-        #                         path_lens,
-        #                         iter_i = 0, 
-        #                         stats=None, 
-        #                         env=env_4_viz, 
-        #                         log_wandb=True, 
-        #                         plot_policy=False,
-        #                         traj_idx=None,      #None=all, list of rzn_ids []
-        #                         show_scatter=True,
-        #                         at_time=None,
-        #                         color_by_time=True, #TODO: fix tdone issue in src_utils
-        #                         plot_flow=True,
-        #                         wandb_suffix="val") 
+            val_op_traj_dict_list, val_results = translate(transformer, val_idx_set, val_set, None, 
+                                                           cfg, earlybreak=tt_eb[1])
+            val_set_txy_preds = [d['states'] for d in val_op_traj_dict_list]
+            path_lens = [d['n_tsteps'] for d in val_op_traj_dict_list]
+            visualize_output(val_set_txy_preds, 
+                                path_lens,
+                                iter_i = 0, 
+                                stats=None, 
+                                env=env_4_viz, 
+                                log_wandb=True, 
+                                plot_policy=False,
+                                traj_idx=None,      #None=all, list of rzn_ids []
+                                show_scatter=True,
+                                at_time=None,
+                                color_by_time=True, #TODO: fix tdone issue in src_utils
+                                plot_flow=True,
+                                wandb_suffix="val") 
 
         # #Note: val_results get updated after eval_inerval
         # translate_avg_ep_len = val_results['translate/avg_ep_len']
@@ -693,19 +694,18 @@ def train_model(args=None, cfg_name=None):
     # return best_avg_episode_length
     return
 
-class jugaad_cfg:
+class fix_cfg:
     def __init__(self, context_len, device):
         self.context_len = context_len
         self.device = device
 
-def load_prev_and_test(args, cfg_name):
+
+def load_and_test_ckpt(args, cfg_name):
     wandb_exp_name = "dummy"
     wandb.init(project="translation-transformer",
         name = wandb_exp_name,
         )
-    # load model
-    # tmp_path = ROOT + "log/my_translat_GPTdset_DG3_model_04-01-03-20.pt"
-    # ROOT = /home/rohit/Documents/Research/Planning_with_transformers/Translation_transformer/my-translat-transformer/
+    # Load model
     tmp_path = ROOT + "log/my_translat_GPTdset_DG3_model_08-24-17-28.pt" 
     
     transformer = torch.load(tmp_path)
@@ -748,10 +748,11 @@ def load_prev_and_test(args, cfg_name):
     
     # src_stats = us_test_traj_set.get_src_stats()
     test_idx_set = None #TODO: clean unneeded vars and args
-    # read cfg not working and requires postprocessing 
+    # read cfg not working and requires postprocessing; using fix_cfg instead
     # cfg_path =  tmp_path[:-3] + ".yml"
     # cfg =  read_cfg_file(cfg_path)
-    cfg = jugaad_cfg(context_len=120, device='cuda')
+    cfg = fix_cfg(context_len=120, device='cuda')
+
     # translate_start_time = timer()
     _, dummy_target, _, _, dummy_env_coef_seq, _,_,dummy_flow_dir,_ = us_train_traj_set[0]
     src_vec_dim = dummy_env_coef_seq.shape[-1]
@@ -916,7 +917,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument('--mode', type=str, default='single_run')
     parser.add_argument('--quick_run', type=bool, default=False)
-    parser.add_argument('--CFG', type=str, default='v5_GPT_DG3')
+    parser.add_argument('--CFG', type=str, default='v5_DOLS') #v5_GPT_DG3
     args = parser.parse_args()
 
     cfg_name = "cfg/contGrid_" + args.CFG
@@ -931,16 +932,16 @@ if __name__ == "__main__":
     print(f'args.mode = {args.mode}')
     print(f"ARGS_QR={ARGS_QR}")
 
-    if args.mode == 'load_prev_and_test':
-        print("----- beginning load_prev_and_test ------")
-        load_prev_and_test(args, cfg_name)        
+    if args.mode == 'load_and_test_ckpt':
+        print("----- beginning load_and_test_ckpt ------")
+        load_and_test_ckpt(args, cfg_name)        
 
     if args.mode == 'single_run':
         print("----- beginning single_run ------")
         train_model(args, cfg_name)
 
     elif args.mode == 'sweep':
-        print("----- beginning sweeeeeeeeeeeeep ------")
+        print("----- beginning sweep ------")
         sweep_cfg = read_cfg_file(cfg_name=sweep_cfg_name)
         sweep_id = wandb.sweep(sweep_cfg)
         wandb.agent(sweep_id, function=train_model)
