@@ -1,0 +1,138 @@
+# Physics Guided Path Planning Transformer
+
+This repository contains the code for Physics Guided Path Planning Transformer (PGPPT)  - deep learning-based sequence-to-sequence model designed for efficient path planning of under-actuated autonomous marine vehicles in dynamic ocean environments. 
+
+
+## Table of Contents
+
+- [Introduction](#introduction)
+- [Installation](#installation)
+- [Usage](#usage)
+- [Notes](#Notes)
+
+## Introduction
+
+This project contains the code for PGPPT.
+
+## Installation
+The project was run using Python 3.11, CUDA Version 12.2, torch 2.1.2
+
+### Clone the project and install packages
+```bash
+# Clone the repository
+git clone -b clean_demo https://github.com/rohit1607/Translation_transformer.git
+
+# Navigate to the project directory
+cd Translation_transformer
+
+# make a virutal environment and activate it
+python -m venv my_venv
+source my_venv/bin/activate
+
+# Install dependencies
+cd my-translat-transformer
+pip install -r requirements.txt
+```
+
+### Modify ROOT and verify gym_examples installation
+
+The following steps are required to complete the setup on your local machine.
+
+Notes: 'path_to_your_dir' is the path of the directory where you cloned this repository
+
+1. Navigate to the src folder
+
+    ```bash
+    # navigate to src folder
+    cd path_to_your_dir/Translation_transformer/my-translat-transformer/src
+    ```
+2. Edit **root_path.py** to incorporate your 'path_to_your_dir' path.
+    ```python
+    ROOT = "path_to_your_dir/Translation_transformer/my-translat-transformer"
+    ```
+3. Verify if gym_examples is installed by running
+    ```bash
+     pip list | grep gym_examples
+    ```
+    If it is not installed, then do the following
+    ```bash
+    # navigate to gym-examples folder
+    cd path_to_your_dir/Translation_transformer/my-translation-transformer/gym-examples
+
+    # install gym_exmaples
+    pip install -e .
+    ```
+4. Login to your wandb (weights and biases) account. See https://wandb.ai/site/ for details.
+
+### Download data and place in the data folder
+1. Navigate to the data folder and download the files
+    ```bash
+    # navigate to the data folder
+    cd path_to_your_dir/Translation_transformer/my-translation-transformer/data
+
+    # download the data folder
+    wget/gdown
+
+    # unzip the downloaded file
+
+    # 
+
+    ```
+2. Contents of the data folder should be
+    ```
+    # path_to_your_dir/Translation_transformer/my-translation-transformer/data
+    .
+    ├── DOLS_Cylinder/
+    ├── GPT_dset_DG3/
+    ```
+
+
+## Usage
+1. To train the model
+    ```bash
+    # Navigate to src folder
+    cd path_to_your_dir/Translation_transformer/my-translation-transformer/src
+
+    # For Flow past cylindrical island scenario:
+    python main.py --mode train --CFG v5_DOLS
+
+    # For Double gyre:
+    python main.py --mode train --CFG v5_GPT_DG3 
+    ```
+    
+    Training config files for the two scenarios are located in the cfg folder.
+    Experiment hyperparameters can be set there.
+    ```
+    path_to_your_dir/Translation_transformer/my-translat-transformer/cfg/contGrid_v5_DOLS.yaml
+
+    path_to_your_dir/Translation_transformer/my-translat-transformer/cfg/contGrid_v5_GPT_DG3.yaml
+    ```
+    
+    Notes:
+    
+    - Post training, inference on the test set will automatically be run on the best ckpt.
+    - Each experiment is automatically named in the format "my_translat_{scenario}\_model\_{date_time}"
+    - Results will be saved in the log folder:
+        ```bash
+        path_to_your_dir/Translation_transformer/my-translat-transformer/log
+        ```
+    - The log folder will contain 3 files for each experiment:
+        - my_translat_{scenario}\_model\_{date_time}_src_stats.npy 
+            - contains data statistics computed during pre-processing. Used for de-normalizing the data durign post-processing
+        - my_translat_{scenario}\_model\_{date_time}.pt
+            - contains the best model ckpt
+        - my_translat_{scenario}\_model\_{date_time}.yml
+            - is a copy of the cfg file that was used to run the experiment
+
+2. For Running inference manually
+    ```bash
+    python main.py --mode inference_on_ckpt --ckpt ckpt_path_in_log
+    ```
+
+## Notes
+
+1. Attention visualization snippets have been commented out for now. The vizualization was implemented as modifications in torch.nn Transformers module and was unfortunately not tracked with git. We will soon re-implement and upload our customized-Transformers module that can be used instead.
+
+2. Users will require to create and login to wandb account. This is required fo
+for logging experiment metrics.
+

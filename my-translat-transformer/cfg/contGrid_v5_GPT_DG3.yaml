@@ -35,7 +35,7 @@ split_tr_tst_val: [0.8, 0.05, 0.15]
 
 split_ran_seed: 42
 comp_val_loss: False
-translate_earlybreaks: [50, 50, 500] #tr, val, test
+translate_earlybreaks: [50, 50, 50] #tr, val, test
 
 max_eval_ep_len: 120
 num_eval_ep: 300

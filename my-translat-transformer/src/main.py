@@ -382,7 +382,7 @@ def train_model(args=None, cfg_name=None):
 
     if ARGS_QR:
         print("\n ---------- Modifying cfg params for quick run --------------- \n")
-        num_epochs = 2
+        num_epochs = 10
 
 
 
@@ -602,22 +602,22 @@ def train_model(args=None, cfg_name=None):
                                 plot_flow=True,
                                 wandb_suffix="val") 
 
-        # #Note: val_results get updated after eval_inerval
-        # translate_avg_ep_len = val_results['translate/avg_ep_len']
-        # translate_avg_val_loss = val_results['avg_val_loss']
-        # success_ratio = val_results['translate/success_ratio']
+        #Note: val_results get updated after eval_inerval
+        translate_avg_ep_len = val_results['translate/avg_ep_len']
+        translate_avg_val_loss = val_results['avg_val_loss']
+        success_ratio = val_results['translate/success_ratio']
         # tr_success_ratio = tr_results['translate/success_ratio']
-        # count = val_results['runs_from_set(count)'] 
-        # log_dict = { "tr_loss_vs_epoch (unpadded elems)": train_loss,
-        #     "val_loss_vs_epoch (unpadded elems)": val_loss,
-        #     "avg_val_loss (across pred len)": translate_avg_val_loss,
-        #     "success_ratio": success_ratio,
-        #     "succes_ratio (train)": tr_success_ratio,
-        #     'runs_from_set(count)': count,
-        #     "ETA": translate_avg_ep_len,
-        #     # "lr" : scheduler.get_last_lr()[0] if use_scheduler else lr
-        #     }
-        # wandb.log(log_dict)
+        count = val_results['runs_from_set(count)'] 
+        log_dict = { "tr_loss_vs_epoch (unpadded elems)": train_loss,
+            "val_loss_vs_epoch (unpadded elems)": val_loss,
+            "avg_val_loss (across pred len)": translate_avg_val_loss,
+            "success_ratio": success_ratio,
+            # "succes_ratio (train)": tr_success_ratio,
+            'runs_from_set(count)': count,
+            "ETA": translate_avg_ep_len,
+            # "lr" : scheduler.get_last_lr()[0] if use_scheduler else lr
+            }
+        wandb.log(log_dict)
 
     
         time_elapsed = str(datetime.now().replace(microsecond=0) - start_time)
@@ -632,35 +632,38 @@ def train_model(args=None, cfg_name=None):
         
         # TODO: need to translate to save model. commenting for now
         # if translate_avg_ep_len < min_ETA:
-        # if success_ratio > max_sr:
-        #     # min_ETA = translate_avg_ep_len
-        #     max_sr = success_ratio
-        #     print("saving current model at: " + save_model_path)
+        if success_ratio > max_sr:
+            # min_ETA = translate_avg_ep_len
+            max_sr = success_ratio
+            print("saving current model at: " + save_model_path)
 
-        #     best_avg_episode_length = translate_avg_ep_len
-        #     best_success_ratio = success_ratio
-        #     best_epoch = epoch
-        #     # "avg_val_loss"= eval_avg_val_loss
+            best_avg_episode_length = translate_avg_ep_len
+            best_success_ratio = success_ratio
+            best_epoch = epoch
+            # "avg_val_loss"= eval_avg_val_loss
 
-        #     torch.save(transformer, save_model_path)
-        #     tmp_path = save_model_path[:-1]
-        #     torch.save(transformer, tmp_path)
+            torch.save(transformer, save_model_path)
+            # tmp_path = save_model_path[:-1]
+            # torch.save(transformer, tmp_path)
 
-    tmp_path = save_model_path[:-1]
+
+    # tmp_path = save_model_path[:-1]
     cfg_copy_path = save_model_path[:-2] + "yml"
     save_yaml(cfg_copy_path,cfg)
     print(f"cfg_copy_path = {cfg_copy_path}")
-    # wandb.run.summary["best_avg_episode_length"] = best_avg_episode_length
-    # wandb.run.summary["best_success_ratio"] = best_success_ratio
-    # wandb.run.summary["total_runs_val_set"] = len(val_op_traj_dict_list)
-    # wandb.run.summary["best_epoch"] = best_epoch
+    wandb.run.summary["best_avg_episode_length"] = best_avg_episode_length
+    wandb.run.summary["best_success_ratio"] = best_success_ratio
+    wandb.run.summary["total_runs_val_set"] = len(val_op_traj_dict_list)
+    wandb.run.summary["best_epoch"] = best_epoch
 
     print("=" * 60)
     print("finished training!")
     print("=" * 60)
 
+
+
     print(f"\n\n ---- running inference on test set ----- \n\n")
-    transformer = torch.load(tmp_path)
+    transformer = torch.load(save_model_path)
     try:
         op_traj_dict_list, results  = translate(transformer,test_idx_set, test_set, 
                                                 None, cfg, earlybreak=tt_eb[2])
@@ -691,8 +694,8 @@ def train_model(args=None, cfg_name=None):
     print("saved last updated model at: " + save_model_path)
     print("=" * 60)
 
-    # return best_avg_episode_length
-    return
+    return best_avg_episode_length
+    # return
 
 class fix_cfg:
     def __init__(self, context_len, device):
@@ -700,7 +703,7 @@ class fix_cfg:
         self.device = device
 
 
-def load_and_test_ckpt(args, cfg_name):
+def inference_on_ckpt(args, cfg_name):
     wandb_exp_name = "dummy"
     wandb.init(project="translation-transformer",
         name = wandb_exp_name,
@@ -911,13 +914,26 @@ NAME_MAP = {
             "v5_DOLS": "DOLS"
             }
 
+
+"""
+run script with:
+To train model:
+    For Flow past cylindrical island scenario:
+        python main.py --mode train --CFG v5_DOLS
+    For Double gyre:
+        python main.py --mode train --CFG v5_GPT_DG3
+
+To run inference:
+    python main.py --mode 
+"""
+
 if __name__ == "__main__":
 
     print(f"cuda available: {torch.cuda.is_available()}")
     parser = argparse.ArgumentParser()
-    parser.add_argument('--mode', type=str, default='single_run')
-    parser.add_argument('--quick_run', type=bool, default=False)
-    parser.add_argument('--CFG', type=str, default='v5_DOLS') #v5_GPT_DG3
+    parser.add_argument('--mode', type=str, default='train')
+    parser.add_argument('--quick_run', type=bool, default=True)
+    parser.add_argument('--CFG', type=str, default='v5_GPT_DG3') #v5_GPT_DG3 #v5_DOLS
     args = parser.parse_args()
 
     cfg_name = "cfg/contGrid_" + args.CFG
@@ -932,12 +948,12 @@ if __name__ == "__main__":
     print(f'args.mode = {args.mode}')
     print(f"ARGS_QR={ARGS_QR}")
 
-    if args.mode == 'load_and_test_ckpt':
-        print("----- beginning load_and_test_ckpt ------")
-        load_and_test_ckpt(args, cfg_name)        
+    if args.mode == 'inference_on_ckpt':
+        print("----- beginning inference_on_ckpt ------")
+        inference_on_ckpt(args, cfg_name)        
 
-    if args.mode == 'single_run':
-        print("----- beginning single_run ------")
+    if args.mode == 'train':
+        print("----- beginning train ------")
         train_model(args, cfg_name)
 
     elif args.mode == 'sweep':
