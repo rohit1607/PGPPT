@@ -126,11 +126,22 @@ Notes: 'path_to_your_dir' is the path of the directory where you cloned this rep
     ```bash
     python main.py --mode inference_on_ckpt --ckpt ckpt_path_in_log
     ```
-
+    Notes:
+    - running in inference also populates the paper_plots directory 
+    - plots showing trajectories in velocity fields will be populated inside the folder:
+        ```
+        paper_plots/exp_name/dataset_name/translation/
+        ```
+    - For DOLS_Cyliner dataset,
+        - test_ip_op.png visualizes training data and test set predictions with arrival times
+        - test_traj_ip_op.png visualizes the correctness of the path taken (North/South of island)
+        - velocity.png visualizes the velocity fields
+    
+        
 ## Notes
 
-1. Attention visualization snippets have been commented out for now. The vizualization was implemented as modifications in torch.nn Transformers module and was unfortunately not tracked with git. We will soon re-implement and upload our customized-Transformers module that can be used instead.
+1. Attention visualization snippets have been commented out for now. The vizualization was implemented through modifications in torch.nn Transformers module and was unfortunately not tracked with git. We will soon re-implement and upload our customized-Transformers module that can be used instead.
 
-2. Users will require to create and login to wandb account. This is required fo
+2. Users will require to create and login to their wandb account. This is required
 for logging experiment metrics.
 

@@ -7,11 +7,18 @@ import time
 import math
 import yaml
 import matplotlib.pyplot as plt
+import os
+
 def save_yaml(savepath, data):
     with open(savepath, 'w') as outfile:
         yaml.dump(data, outfile, default_flow_style=False)
 
 def save_object(obj, filename):
+    # check if parent directory exists, if not create it
+    parent_dir = os.path.dirname(filename)
+    if not os.path.exists(parent_dir):
+        os.makedirs(parent_dir)
+        
     with open(filename, 'wb') as outp:  # Overwrites any existing file.
         pickle.dump(obj, outp, pickle.HIGHEST_PROTOCOL)
 

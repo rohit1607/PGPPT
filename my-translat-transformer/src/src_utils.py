@@ -324,7 +324,7 @@ class create_action_dataset_v2(Dataset):
         self.Y = [item[2]/(2*np.pi) for item in self.dataset]
         eps = 2e-15
         # normalzise
-        if norm_params_4_val == None:
+        if norm_params_4_val is None:
             for i in range(len(self.X)):
                 self.X[i] = self.X[i] - self.X_mean
                 self.X[i] = np.divide(self.X[i], self.X_std + eps)

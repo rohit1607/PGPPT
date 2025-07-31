@@ -26,7 +26,7 @@ import os
 from transformers import get_cosine_with_hard_restarts_schedule_with_warmup
 from PIL import ImageFile
 ImageFile.LOAD_TRUNCATED_IMAGES = True
-from GPT_paper_plots import paper_plots
+
 
 wandb.login()
 OLD_ROOT = "/home/rohit/Documents/Research/Planning_with_transformers/Translation_transformer/my-translat-transformer"
@@ -735,7 +735,7 @@ def inference_on_ckpt(args):
     # dataset_path = '/home/rohit/Documents/Research/Planning_with_transformers/Translation_transformer/my-translat-transformer/data/GPT_dset_DG3/static_obs/GPTdset_DG3_g100x100x120_r5k_Obsv1_multi_ran_stat/Gathered_datasets/gathered_10_0_5k_test/gathered_10.pkl'
     
     traj_dataset = load_pkl(dataset_path)
-    dataset_name = dataset_path[:-4].split('/')[-1]
+    dataset_name = cfg['dataset_name']
     # src_stats_path = tmp_path[:-3] + "_src_stats.npy"
     # src_stats_path = ROOT + f"log/{model_name}_src_stats.npy"
     src_stats = np.load(src_stats_path)
@@ -750,7 +750,7 @@ def inference_on_ckpt(args):
     us_train_idx_set, us_test_idx_set, us_val_idx_set = idx_split
 
     us_test_traj_set = create_action_dataset_v2(us_test_traj_set, 
-                            idx_set=[None],
+                            idx_set=us_test_idx_set,
                             context_len=cfg['context_len'],
                             norm_params_4_val = src_stats
                                         )
@@ -761,22 +761,26 @@ def inference_on_ckpt(args):
     # cfg_path =  tmp_path[:-3] + ".yml"
     # cfg =  read_cfg_file(cfg_path)
 
-    # cfg = fix_cfg(context_len=120, device='cuda')
     if "DG3" in dataset_name:
         t_viz = 119
+        from GPT_paper_plots import paper_plots
+
     elif "DOLS" in dataset_name:
         t_viz = 100
+        from paper_plots import paper_plots
+
     else:
         raise NotImplementedError
-    # translate_start_time = timer()
-    _, dummy_target, _, _, dummy_env_coef_seq, _,_,dummy_flow_dir,_ = us_train_traj_set[0]
+
+    _, dummy_target, _, _, dummy_env_coef_seq, _,_,dummy_flow_dir,_ = us_test_traj_set[0]
     src_vec_dim = dummy_env_coef_seq.shape[-1]
     tgt_vec_dim = dummy_target.shape[-1]
     print(f"src_vec_dim = {src_vec_dim} \n tgt_vec_dim = {tgt_vec_dim}")
     
     # intantiate gym env for vizualization purposes
+    dummy_flow_dir = dummy_flow_dir.replace(OLD_ROOT, ROOT)
     env_4_viz = setup_env(dummy_flow_dir, OLD_ROOT)
-    simulate_tgt_actions(us_train_traj_set,
+    simulate_tgt_actions(us_test_traj_set,
                             env=env_4_viz,
                             log_wandb=True,
                             wandb_fname='simulate_tgt_actions',
@@ -784,8 +788,9 @@ def inference_on_ckpt(args):
                             at_time=t_viz,
                             break_at=500)
     
-    op_traj_dict_list, results = translate(transformer,us_train_idx_set, us_train_traj_set, 
-                                            None, cfg, earlybreak=500)
+    cfg_ = fix_cfg(context_len=cfg['context_len'], device=cfg['device'])
+    op_traj_dict_list, results = translate(transformer, us_test_idx_set, us_test_traj_set, 
+                                            None, cfg_, earlybreak=100)
     # translate_end_time = timer()
     # print(f"Translate runtime = {(translate_end_time - translate_start_time):.3f}s")
     # os.makedirs(os.path.dirname(ROOT + f"paper_plots/{model_name}/DOLS_targ_{targ}/{dset}_op_traj_dict_list.pkl"),exist_ok=True)
@@ -806,15 +811,16 @@ def inference_on_ckpt(args):
 
     op_traj_dict_list = load_pkl(os.path.join(ROOT, f"paper_plots/{model_name}/{dataset_name}/{dset}_op_traj_dict_list.pkl"))
     results = load_pkl(os.path.join(ROOT, f"paper_plots/{model_name}/{dataset_name}/{dset}_results.pkl"))
-    _, dummy_target, _, _, dummy_env_coef_seq, _,_,dummy_flow_dir,_ = us_val_traj_set[0]
-    # intantiate gym env for vizualization purposes
-    env_4_viz = setup_env(dummy_flow_dir, OLD_ROOT)
+    
+    # _, dummy_target, _, _, dummy_env_coef_seq, _,_,dummy_flow_dir,_ = us_val_traj_set[0]
+    # # intantiate gym env for vizualization purposes
+    # env_4_viz = setup_env(dummy_flow_dir, OLD_ROOT)
     
     
-    
+
     test_set_txy_preds = [d['states'] for d in op_traj_dict_list]
     path_lens = [d['n_tsteps'] for d in op_traj_dict_list]
-    all_att_mat_list =  [d['all_att_mat'] for d in op_traj_dict_list]
+    # all_att_mat_list =  [d['all_att_mat'] for d in op_traj_dict_list]
     success_list = [d['success'] for d in op_traj_dict_list]
     actions = [d['actions'] for d in op_traj_dict_list]
     
@@ -835,15 +841,27 @@ def inference_on_ckpt(args):
                     "loss_avg_returns":{"fname":"loss"},
                     "vel_field":{"fname":"vel_field", "ts":[1,60,119]}
                         }
-    pp = paper_plots(env_4_viz, op_traj_dict_list, src_stats,
+    
+    if "DG3" in dataset_name:
+        from GPT_paper_plots import paper_plots
+        pp = paper_plots(env_4_viz, op_traj_dict_list, src_stats,
                         paper_plot_info=paper_plot_info,
                         save_dir=save_dir)
-    pp.plot_val_ip_op(us_test_traj_set, test_set_txy_preds, path_lens, success_list)
-    # pp.plot_trajs_ip_op(us_test_traj_set, test_set_txy_preds, path_lens, success_list)
-    # pp.plot_velocity_obstacle()
-    # pp.plot_actions(us_test_traj_set, test_set_txy_preds, path_lens, success_list, actions)
+        pp.plot_traj_by_arr(us_test_traj_set,set_str="_us_test_")
+
+    elif "DOLS" in dataset_name:
+        from paper_plots import paper_plots
+        pp = paper_plots(env_4_viz, op_traj_dict_list, src_stats,
+                        paper_plot_info=paper_plot_info,
+                        save_dir=save_dir)
+        pp.plot_val_ip_op(us_test_traj_set, test_set_txy_preds, path_lens, success_list)
+        pp.plot_trajs_ip_op(us_test_traj_set, test_set_txy_preds, path_lens, success_list)
+        pp.plot_velocity_obstacle()
+        pp.plot_actions(us_test_traj_set, test_set_txy_preds, path_lens, success_list, actions)
+
+    else:
+        raise NotImplementedError    
     
-    # pp.plot_traj_by_arr(us_test_traj_set,set_str="_us_test_")
     # pp.plot_train_val_ip_op(us_train_traj_set, us_test_traj_set)
     # pp.plot_traj_by_arr(val_traj_dataset, set_str="_val")
     # pp.plot_att_heatmap(100)
