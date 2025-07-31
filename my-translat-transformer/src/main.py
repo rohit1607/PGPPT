@@ -448,7 +448,7 @@ def train_model(args=None, cfg_name=None):
     env_4_viz = setup_env(dummy_flow_dir, OLD_ROOT)
  
     # data visualization for sanity check
-    break_at = 200 #for debugging only
+    break_at = 100 #for debugging only
     if "DG3" in dataset_name:
         t_viz = 119
     elif "DOLS" in dataset_name:
@@ -857,9 +857,6 @@ def inference_on_ckpt(args):
     # return        
 
 
-
-
-
 ARGS_QR = False
 ARGS_CFG = "_--_"
 NAME_MAP = {
@@ -871,7 +868,7 @@ NAME_MAP = {
 
 
 """
-run script with:
+----------------------- run script with: -------------------------------------------------
 To train model:
     For Flow past cylindrical island scenario:
         python main.py --mode train --CFG v5_DOLS
@@ -880,14 +877,16 @@ To train model:
 
 To run inference:
     python main.py --mode inference_on_ckpt --ckpt_path <path_to_model_checkpoint.pt>
+-----------------------------------------------------------------------------------------
 """
+
 
 if __name__ == "__main__":
 
     print(f"cuda available: {torch.cuda.is_available()}")
     parser = argparse.ArgumentParser()
     parser.add_argument('--mode', type=str, default='train')
-    parser.add_argument('--quick_run', type=bool, default=True)
+    parser.add_argument('--quick_run', type=bool, default=False) # set True for quick exection of the scipt
     parser.add_argument('--CFG', type=str, default='v5_DOLS') #v5_GPT_DG3 #v5_DOLS
     parser.add_argument('--ckpt_path', type=str, default=None,
                         help="Path to the checkpoint for inference")
@@ -900,7 +899,7 @@ if __name__ == "__main__":
     cfg_name = join(ROOT,cfg_name)
     sweep_cfg_name = join(ROOT,sweep_cfg_name)
 
-    ARGS_QR = args.quick_run # for sweep mode
+    ARGS_QR = args.quick_run 
     ARGS_CFG = args.CFG
     print(f'args.mode = {args.mode}')
     print(f"ARGS_QR={ARGS_QR}")

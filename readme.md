@@ -92,10 +92,10 @@ Notes: 'path_to_your_dir' is the path of the directory where you cloned this rep
     cd path_to_your_dir/Translation_transformer/my-translation-transformer/src
 
     # For Flow past cylindrical island scenario:
-    python main.py --mode train --CFG v5_DOLS
+    python main.py --mode train --CFG v5_DOLS --quick_run False
 
     # For Double gyre:
-    python main.py --mode train --CFG v5_GPT_DG3 
+    python main.py --mode train --CFG v5_GPT_DG3 --quick_run False
     ```
     
     Training config files for the two scenarios are located in the cfg folder.
