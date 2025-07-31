@@ -140,7 +140,17 @@ Notes: 'path_to_your_dir' is the path of the directory where you cloned this rep
         
 ## Notes
 
-1. Attention visualization snippets have been commented out for now. The vizualization was implemented through modifications in torch.nn Transformers module and was unfortunately not tracked with git. We will soon re-implement and upload our customized-Transformers module that can be used instead.
+1. gym-examples/gym_examples/envs contains custom implementations of simulated environments with an agent and velocity field
+
+2. src/src_utils contains dataset implementations and othe project specific utility functions
+
+3. Configuration files for experiments are present in the cfg folder
+ 
+4. For each experiment, Model ckpts, experitment configuration, and data statisitics are logged in the log folder
+
+5. Data should be downloaded, unzipped and kept inside the data folder
+
+1. In main.py, attention visualization blocks and snippets have been commented out for now. The vizualization was implemented through modifications in torch.nn Transformers module and was unfortunately not tracked with git. We will soon re-implement and upload our customized-Transformers module that can be used instead.
 
 2. Users will require to create and login to their wandb account. This is required
 for logging experiment metrics.

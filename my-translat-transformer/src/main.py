@@ -528,63 +528,10 @@ def train_model(args=None, cfg_name=None):
         # # Evalutation by translation   
         if epoch % eval_inerval == 0:
         #     print("plotting attention")
-        #     # TODO: using the plot_all_attention_mats requires library changes to get attention
+        #     # TODO: using the plot_all_attention_mats requires library changes to extract attention_weights
         #     # plot_all_attention_mats(tr_all_att_mat)
         #     # plot_all_attention_mats(val_all_att_mat)
-        #     print("translating")
-        #     tr_op_traj_dict_list, tr_results = translate(transformer, train_idx_set, tr_set, None, 
-        #                                            cfg, earlybreak=tt_eb[0])
-            
-        #     tr_set_txy_preds = [d['states'] for d in tr_op_traj_dict_list]
-        #     all_att_mat_list =  [d['all_att_mat'] for d in tr_op_traj_dict_list]
 
-
-        #     path_lens = [d['n_tsteps'] for d in tr_op_traj_dict_list]
-        #     visualize_output(tr_set_txy_preds, 
-        #                         path_lens,
-        #                         iter_i = 0, 
-        #                         stats=None, 
-        #                         env=env_4_viz, 
-        #                         log_wandb=True, 
-        #                         plot_policy=False,
-        #                         traj_idx=None,      #None = all, list of rzn_ids []
-        #                         show_scatter=False,
-        #                         at_time=None,
-        #                         color_by_time=True, #TODO: fix tdone issue in src_utils
-        #                         plot_flow=True,
-        #                         wandb_suffix="train")
-            
-        #     # compare_trajectories(tr_op_traj_dict_list,
-        #     #                     path_lens,
-        #     #                     iter_i = 0, 
-        #     #                     stats=None, 
-        #     #                     env=env_4_viz, 
-        #     #                     log_wandb=True, 
-        #     #                     plot_policy=True,
-        #     #                     traj_idx=[1, 5,],      #None=all, list of rzn_ids []
-        #     #                     show_scatter=True,
-        #     #                     at_time=None,
-        #     #                     color_by_time=True, #TODO: fix tdone issue in src_utils
-        #     #                     plot_flow=True,
-        #     #                     wandb_suffix="train")   
-            
-        #     # Uncomment again once attanetion hook is reaplied or alternative found
-        #     # viz_op_traj_with_attention(tr_set_txy_preds,
-        #     #                     all_att_mat_list, # could be enc_sa, dec_sa, dec_ga
-        #     #                     path_lens,
-        #     #                     mode='dec_sa',       #or 'a_s_attention'
-        #     #                     average_across_layers=True,
-        #     #                     stats=None, 
-        #     #                     env=env_4_viz, 
-        #     #                     log_wandb=True, 
-        #     #                     scale_each_row=True,
-        #     #                     plot_policy=False,
-        #     #                     traj_idx=None,      #None=all, list of rzn_ids []
-        #     #                     show_scatter=False,
-        #     #                     plot_flow=True,
-        #     #                     at_time=88,
-        #     #                     model_name="DOLS"+"_on_"+dataset_name
-        #     #                     )  
                         
             val_op_traj_dict_list, val_results = translate(transformer, val_idx_set, val_set, None, 
                                                            cfg, earlybreak=tt_eb[1])
@@ -732,12 +679,10 @@ def inference_on_ckpt(args):
     # load unseen dataset
     dset = 'test'
     dataset_path = cfg['dataset_path']
-    # dataset_path = '/home/rohit/Documents/Research/Planning_with_transformers/Translation_transformer/my-translat-transformer/data/GPT_dset_DG3/static_obs/GPTdset_DG3_g100x100x120_r5k_Obsv1_multi_ran_stat/Gathered_datasets/gathered_10_0_5k_test/gathered_10.pkl'
     
     traj_dataset = load_pkl(dataset_path)
     dataset_name = cfg['dataset_name']
-    # src_stats_path = tmp_path[:-3] + "_src_stats.npy"
-    # src_stats_path = ROOT + f"log/{model_name}_src_stats.npy"
+
     src_stats = np.load(src_stats_path)
     src_stats = (src_stats[0], src_stats[1])
 
@@ -755,12 +700,6 @@ def inference_on_ckpt(args):
                             norm_params_4_val = src_stats
                                         )
     
-    # src_stats = us_test_traj_set.get_src_stats()
-    test_idx_set = None #TODO: clean unneeded vars and args
-    # read cfg not working and requires postprocessing; using fix_cfg instead
-    # cfg_path =  tmp_path[:-3] + ".yml"
-    # cfg =  read_cfg_file(cfg_path)
-
     if "DG3" in dataset_name:
         t_viz = 119
         from GPT_paper_plots import paper_plots
@@ -786,23 +725,12 @@ def inference_on_ckpt(args):
                             wandb_fname='simulate_tgt_actions',
                             plot_flow=True,
                             at_time=t_viz,
-                            break_at=500)
+                            break_at=50)
     
     cfg_ = fix_cfg(context_len=cfg['context_len'], device=cfg['device'])
     op_traj_dict_list, results = translate(transformer, us_test_idx_set, us_test_traj_set, 
                                             None, cfg_, earlybreak=100)
-    # translate_end_time = timer()
-    # print(f"Translate runtime = {(translate_end_time - translate_start_time):.3f}s")
-    # os.makedirs(os.path.dirname(ROOT + f"paper_plots/{model_name}/DOLS_targ_{targ}/{dset}_op_traj_dict_list.pkl"),exist_ok=True)
-    # os.makedirs(os.path.dirname(ROOT + f"paper_plots/{model_name}/DOLS_targ_{targ}/{dset}_results.pkl"), exist_ok=True)
-    # save_object(op_traj_dict_list, os.path.join(ROOT, f"paper_plots/{model_name}/DOLS_targ_{targ}/{dset}_op_traj_dict_list.pkl"))
-    # save_object(results,os.path.join(ROOT, f"paper_plots/{model_name}/DOLS_targ_{targ}/{dset}_results.pkl"))
 
-    # op_traj_dict_list = load_pkl(os.path.join(ROOT, f"paper_plots/{model_name}/DOLS_targ_{targ}/{dset}_op_traj_dict_list.pkl"))
-    # results = load_pkl(os.path.join(ROOT, f"paper_plots/{model_name}/DOLS_targ_{targ}/{dset}_results.pkl"))
-    # _, dummy_target, _, _, dummy_env_coef_seq, _,_,dummy_flow_dir,_ = us_val_traj_set[0]
-    # # intantiate gym env for vizualization purposes
-    # env_4_viz = setup_env(dummy_flow_dir)
     
     os.makedirs(os.path.dirname(ROOT + f"paper_plots/{model_name}/{dataset_name}/{dset}_op_traj_dict_list.pkl"),exist_ok=True)
     os.makedirs(os.path.dirname(ROOT + f"paper_plots/{model_name}/{dataset_name}/{dset}_results.pkl"), exist_ok=True)
@@ -812,11 +740,6 @@ def inference_on_ckpt(args):
     op_traj_dict_list = load_pkl(os.path.join(ROOT, f"paper_plots/{model_name}/{dataset_name}/{dset}_op_traj_dict_list.pkl"))
     results = load_pkl(os.path.join(ROOT, f"paper_plots/{model_name}/{dataset_name}/{dset}_results.pkl"))
     
-    # _, dummy_target, _, _, dummy_env_coef_seq, _,_,dummy_flow_dir,_ = us_val_traj_set[0]
-    # # intantiate gym env for vizualization purposes
-    # env_4_viz = setup_env(dummy_flow_dir, OLD_ROOT)
-    
-    
 
     test_set_txy_preds = [d['states'] for d in op_traj_dict_list]
     path_lens = [d['n_tsteps'] for d in op_traj_dict_list]
@@ -824,7 +747,8 @@ def inference_on_ckpt(args):
     success_list = [d['success'] for d in op_traj_dict_list]
     actions = [d['actions'] for d in op_traj_dict_list]
     
-    # taken from vis_traj_with_attention.py in decision transformer project
+
+    # taken from vis_traj_with_attention.py in my decision transformer project
     print(f"model_name = {model_name}")
     # save_dir = "paper_plots/"  + model_name + f"/DOLS_targ_{targ}/increased_cbar"
     save_dir = "paper_plots/"  + model_name + f"/{dataset_name}/translation"    
@@ -862,6 +786,7 @@ def inference_on_ckpt(args):
     else:
         raise NotImplementedError    
     
+
     # pp.plot_train_val_ip_op(us_train_traj_set, us_test_traj_set)
     # pp.plot_traj_by_arr(val_traj_dataset, set_str="_val")
     # pp.plot_att_heatmap(100)
@@ -954,7 +879,7 @@ To train model:
         python main.py --mode train --CFG v5_GPT_DG3
 
 To run inference:
-    python main.py --mode 
+    python main.py --mode inference_on_ckpt --ckpt_path <path_to_model_checkpoint.pt>
 """
 
 if __name__ == "__main__":
