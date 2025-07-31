@@ -30,10 +30,7 @@ from GPT_paper_plots import paper_plots
 
 wandb.login()
 OLD_ROOT = "/home/rohit/Documents/Research/Planning_with_transformers/Translation_transformer/my-translat-transformer"
-DATASET_CREATION_MAP = {"DOLS": create_action_dataset_v2,
-                        # "GenHW": create_action_dataset_v3,
-                        # "GPT_dset": verify TODO
-                        }
+
 
 
 def setup_env(flow_dir, old_root):
@@ -41,7 +38,6 @@ def setup_env(flow_dir, old_root):
     env_name = flow_specific_cfg["env_name"]
     params2 = read_cfg_file(cfg_name=join(flow_dir,"params.yml"))
     env = gym.make(env_name)
-    # # IMP: CLEAN CODE
     # env.if_scale_velocity = True
     env.setup(flow_specific_cfg, params2, add_trans_noise=False, 
               old_root=old_root, current_root=ROOT)
@@ -311,6 +307,10 @@ def translate(model: torch.nn.Module, test_idx, test_set, tr_set_stats, cfg, ear
     return op_traj_dict_list, results
 
 
+
+"""
+Main training function
+"""
 
 def train_model(args=None, cfg_name=None):
 
@@ -697,11 +697,16 @@ def train_model(args=None, cfg_name=None):
     return best_avg_episode_length
     # return
 
+
+
+"""
+For running manual inference on a checkpoint
+"""
+
 class fix_cfg:
     def __init__(self, context_len, device):
         self.context_len = context_len
         self.device = device
-
 
 def inference_on_ckpt(args, cfg_name):
     wandb_exp_name = "dummy"

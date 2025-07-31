@@ -18,9 +18,7 @@
                 "--mode",
                 "load_prev_and_test"
             ],
-            "env": {
-                "CUDA_VISIBLE_DEVICES": "1"
-            }
+
         }
     ]
 }

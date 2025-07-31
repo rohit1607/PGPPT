@@ -1,8 +1,0 @@
-20 May 23
-
-Env to action translation
-- GPT-Dset experiments submitted to ECML in April
-- DOLS experiments going on. Need to fix minor bugs and plot and analyse attention-trajectories
-- GenHW dataset created 
-- Commiting before making changes to src code for GenHW
-- GenHW work will be another branch which we will merge back with action-translation later.
