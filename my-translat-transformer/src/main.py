@@ -325,7 +325,8 @@ def train_model(args=None, cfg_name=None):
         defaults = dict()
         config = defaults
         dataset_name = NAME_MAP[ARGS_CFG] #for sweep mode
-
+    
+    cfg_copy = cfg.copy()
 
     wandb_exp_name = "env2a_" + dataset_name + "__" + start_time_str
     wandb.init(project="translation-transformer",
@@ -390,6 +391,7 @@ def train_model(args=None, cfg_name=None):
 
     save_model_name =  prefix + "_model_" + start_time_str + ".pt"
     save_model_path = join(log_dir, save_model_name)
+    save_yaml(join(ROOT, "log",f"{save_model_name[:-3]}.yml"), cfg_copy)
 
 
     print("=" * 60)
@@ -446,7 +448,7 @@ def train_model(args=None, cfg_name=None):
     env_4_viz = setup_env(dummy_flow_dir, OLD_ROOT)
  
     # data visualization for sanity check
-    break_at = 500 #for debugging only
+    break_at = 200 #for debugging only
     if "DG3" in dataset_name:
         t_viz = 119
     elif "DOLS" in dataset_name:
@@ -648,9 +650,8 @@ def train_model(args=None, cfg_name=None):
 
 
     # tmp_path = save_model_path[:-1]
-    cfg_copy_path = save_model_path[:-2] + "yml"
+    cfg_copy_path = save_model_path[:-3] + "_wandb.yml"
     save_yaml(cfg_copy_path,cfg)
-    print(f"cfg_copy_path = {cfg_copy_path}")
     wandb.run.summary["best_avg_episode_length"] = best_avg_episode_length
     wandb.run.summary["best_success_ratio"] = best_success_ratio
     wandb.run.summary["total_runs_val_set"] = len(val_op_traj_dict_list)
@@ -708,49 +709,49 @@ class fix_cfg:
         self.context_len = context_len
         self.device = device
 
-def inference_on_ckpt(args, cfg_name):
-    wandb_exp_name = "dummy"
+def inference_on_ckpt(args):
+    wandb_exp_name = "inference_on_ckpt"
     wandb.init(project="translation-transformer",
         name = wandb_exp_name,
         )
     # Load model
-    tmp_path = ROOT + "log/my_translat_GPTdset_DG3_model_08-24-17-28.pt" 
+    # tmp_path = ROOT + "log/my_translat_GPTdset_DG3_model_08-24-17-28.pt" 
+    ckpt_path = args.ckpt_path
+    transformer = torch.load(ckpt_path)
+    model_name = ckpt_path[:-3].split('/')[-1]
+    run_cfg_path = ckpt_path[:-3] + ".yml"
+    src_stats_path = ckpt_path[:-3] + "_src_stats.npy"
+
+
+    if not os.path.exists(run_cfg_path):
+        print(f"run_cfg not found at {run_cfg_path}, using default cfg")
+        raise NotImplementedError
     
-    transformer = torch.load(tmp_path)
-    model_name = tmp_path[:-3].split('/')[-1]
+    cfg = read_cfg_file(cfg_name=run_cfg_path)
+
     # load unseen dataset
-    d_no = '5'
     dset = 'test'
-    # dataset_path = ROOT + f"data/DOLS_Cylinder/targ_{targ}/gathered_targ_{targ}.pkl"
-    dataset_path = '/home/rohit/Documents/Research/Planning_with_transformers/Translation_transformer/my-translat-transformer/data/GPT_dset_DG3/static_obs/GPTdset_DG3_g100x100x120_r5k_Obsv1_multi_ran_stat/Gathered_datasets/gathered_10_0_5k_test/gathered_10.pkl'
+    dataset_path = cfg['dataset_path']
+    # dataset_path = '/home/rohit/Documents/Research/Planning_with_transformers/Translation_transformer/my-translat-transformer/data/GPT_dset_DG3/static_obs/GPTdset_DG3_g100x100x120_r5k_Obsv1_multi_ran_stat/Gathered_datasets/gathered_10_0_5k_test/gathered_10.pkl'
+    
     traj_dataset = load_pkl(dataset_path)
     dataset_name = dataset_path[:-4].split('/')[-1]
     # src_stats_path = tmp_path[:-3] + "_src_stats.npy"
-    src_stats_path = ROOT + f"log/{model_name}_src_stats.npy"
+    # src_stats_path = ROOT + f"log/{model_name}_src_stats.npy"
     src_stats = np.load(src_stats_path)
     src_stats = (src_stats[0], src_stats[1])
 
     idx_split, set_split = get_data_split(traj_dataset,
-                                    split_ratio=[0.8,0.05,0.15], 
-                                    random_seed=42,
+                                    split_ratio=cfg['split_tr_tst_val'], 
+                                    random_seed=cfg['split_ran_seed'],
                                     random_split=True)
+    
     us_train_traj_set, us_test_traj_set, us_val_traj_set = set_split
     us_train_idx_set, us_test_idx_set, us_val_idx_set = idx_split
-    us_train_traj_set = create_action_dataset_v2(us_train_traj_set, 
-                            idx_set=[None],
-                            context_len=120,
-                            # norm_params_4_val = src_stats
-                                        )
-    # _, _, us_test_traj_set = set_split
-    # _, _, us_test_idx_set = idx_split
-    us_val_traj_set = create_action_dataset_v2(us_val_traj_set, 
-                            idx_set=[None],
-                            context_len=120,
-                            norm_params_4_val = src_stats
-                                        )
+
     us_test_traj_set = create_action_dataset_v2(us_test_traj_set, 
                             idx_set=[None],
-                            context_len=120,
+                            context_len=cfg['context_len'],
                             norm_params_4_val = src_stats
                                         )
     
@@ -759,8 +760,14 @@ def inference_on_ckpt(args, cfg_name):
     # read cfg not working and requires postprocessing; using fix_cfg instead
     # cfg_path =  tmp_path[:-3] + ".yml"
     # cfg =  read_cfg_file(cfg_path)
-    cfg = fix_cfg(context_len=120, device='cuda')
 
+    # cfg = fix_cfg(context_len=120, device='cuda')
+    if "DG3" in dataset_name:
+        t_viz = 119
+    elif "DOLS" in dataset_name:
+        t_viz = 100
+    else:
+        raise NotImplementedError
     # translate_start_time = timer()
     _, dummy_target, _, _, dummy_env_coef_seq, _,_,dummy_flow_dir,_ = us_train_traj_set[0]
     src_vec_dim = dummy_env_coef_seq.shape[-1]
@@ -774,7 +781,7 @@ def inference_on_ckpt(args, cfg_name):
                             log_wandb=True,
                             wandb_fname='simulate_tgt_actions',
                             plot_flow=True,
-                            at_time=119,
+                            at_time=t_viz,
                             break_at=500)
     
     op_traj_dict_list, results = translate(transformer,us_train_idx_set, us_train_traj_set, 
@@ -938,7 +945,9 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument('--mode', type=str, default='train')
     parser.add_argument('--quick_run', type=bool, default=True)
-    parser.add_argument('--CFG', type=str, default='v5_GPT_DG3') #v5_GPT_DG3 #v5_DOLS
+    parser.add_argument('--CFG', type=str, default='v5_DOLS') #v5_GPT_DG3 #v5_DOLS
+    parser.add_argument('--ckpt_path', type=str, default=None,
+                        help="Path to the checkpoint for inference")
     args = parser.parse_args()
 
     cfg_name = "cfg/contGrid_" + args.CFG
@@ -955,7 +964,7 @@ if __name__ == "__main__":
 
     if args.mode == 'inference_on_ckpt':
         print("----- beginning inference_on_ckpt ------")
-        inference_on_ckpt(args, cfg_name)        
+        inference_on_ckpt(args)        
 
     if args.mode == 'train':
         print("----- beginning train ------")

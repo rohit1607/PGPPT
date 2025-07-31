@@ -50,7 +50,7 @@ Notes: 'path_to_your_dir' is the path of the directory where you cloned this rep
     ```python
     ROOT = "path_to_your_dir/Translation_transformer/my-translat-transformer"
     ```
-3. Verify if gym_examples is installed by running
+3. For simulating agents moving in a velocity field, we use custom environments implemented on top of OpenAI gym. To use them, verify if gym_examples is installed by running. 
     ```bash
      pip list | grep gym_examples
     ```
@@ -65,20 +65,18 @@ Notes: 'path_to_your_dir' is the path of the directory where you cloned this rep
 4. Login to your wandb (weights and biases) account. See https://wandb.ai/site/ for details.
 
 ### Download data and place in the data folder
-1. Navigate to the data folder and download the files
+1. Download the data from here [---> DATA: ONEDRIVE_LINK <---](https://indianinstituteofscience-my.sharepoint.com/:f:/g/personal/deepakns_iisc_ac_in/EgIYYl6AYY1EgDGMNbJz8GsB7FhlnnRXILBJ3y_JmSwg5Q?e=AtMf91) 
+
+2. Move the downloaded files to the data folder and unzip them
     ```bash
     # navigate to the data folder
     cd path_to_your_dir/Translation_transformer/my-translation-transformer/data
 
-    # download the data folder
-    wget/gdown
-
-    # unzip the downloaded file
-
-    # 
-
+    # move the downloaded files to the data folder and unzip them
+    unzip DOLS_Cylinder.zip
+    unzip GPT_dset_DG3.zip
     ```
-2. Contents of the data folder should be
+2. After unzipping the files, contents of the data folder should be
     ```
     # path_to_your_dir/Translation_transformer/my-translation-transformer/data
     .
