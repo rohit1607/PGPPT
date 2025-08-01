@@ -20,3 +20,4 @@ If you would like to contribute, follow these steps:
 - Set up pre-commit via `pre-commit install`
 
 PRs may require accompanying PRs in [the documentation repo](https://github.com/Farama-Foundation/gym-docs).
+

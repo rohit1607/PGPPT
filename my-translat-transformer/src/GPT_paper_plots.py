@@ -19,6 +19,8 @@ from src_utils import scale_attention_rows
 import matplotlib.patches as patches
 
 
+
+
 class paper_plots:
     def __init__(self, env,  op_traj_dict_list, stats, paper_plot_info, non_dim_plots=True, save_dir='../tmp/'):
         self.env = env

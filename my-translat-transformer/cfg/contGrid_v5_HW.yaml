@@ -32,7 +32,7 @@ lr: 0.00002
 use_scheduler: True
 wt_decay: 0.0000
 warmup_steps: 1000
-num_epochs: 2
+num_epochs: 10
 num_updates_per_iter: 500
 add_target_loss: False
 a_tl: 1000

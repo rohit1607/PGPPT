@@ -45,5 +45,5 @@ my_dt_bcGPTdset_DG3_model_08-26-03-32-08, 25305, Test(500), {'mean Tarr logged d
 my_dt_bcGPTdset_DG3_model_08-26-03-50-50, 45565, Test(500), {'mean Tarr logged dataset': 72.632, 'std Tarr logged dataset': 2.498114488969631, 'mean Tarr prediction': 83.28456913827655, 'std Tarr prediction': 17.63556658523604, 'success rate': 0.7394789579158316, 'prediction count': 499}
 my_dt_bcGPTdset_DG3_model_08-26-03-50-50, 43475, Test(500), {'mean Tarr logged dataset': 85.67489711934157, 'std Tarr logged dataset': 16.17437348090193, 'mean Tarr prediction': 90.50501002004007, 'std Tarr prediction': 18.676055929453092, 'success rate': 0.46893787575150303, 'prediction count': 499}
 
-dt multi_obs without state
+dt multi_obs without state:
  {'mean Tarr logged dataset': 95.46774193548387, 'std Tarr logged dataset': 5.33693080196995, 'mean Tarr prediction': 70.15430861723446, 'std Tarr prediction': 18.595532369931984, 'success rate': 0.08016032064128256, 'prediction count': 499}
