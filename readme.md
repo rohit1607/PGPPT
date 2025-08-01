@@ -20,10 +20,10 @@ The project was run using Python 3.11, CUDA Version 12.2, torch 2.1.2
 ### Clone the project and install packages
 ```bash
 # Clone the repository
-git clone https://github.com/rohit1607/Physics-Guided-Path-Planning-Transformer.git
+git clone https://github.com/rohit1607/PGPPT.git
 
 # Navigate to the project directory
-cd Translation_transformer
+cd PGPPT
 
 # make a virutal environment and activate it
 python -m venv my_venv
@@ -44,11 +44,11 @@ Notes: 'path_to_your_dir' is the path of the directory where you cloned this rep
 
     ```bash
     # navigate to src folder
-    cd path_to_your_dir/Translation_transformer/my-translat-transformer/src
+    cd path_to_your_dir/PGPPT/my-translat-transformer/src
     ```
 2. Edit **root_path.py** to incorporate your 'path_to_your_dir' path.
     ```python
-    ROOT = "path_to_your_dir/Translation_transformer/my-translat-transformer"
+    ROOT = "path_to_your_dir/PGPPT/my-translat-transformer"
     ```
 3. For simulating agents moving in a velocity field, we use custom environments implemented on top of OpenAI gym. To use them, verify if gym_examples is installed by running. 
     ```bash
@@ -57,7 +57,7 @@ Notes: 'path_to_your_dir' is the path of the directory where you cloned this rep
     If it is not installed, then do the following
     ```bash
     # navigate to gym-examples folder
-    cd path_to_your_dir/Translation_transformer/my-translation-transformer/gym-examples
+    cd path_to_your_dir/PGPPT/my-translat-transformer/gym-examples
 
     # install gym_exmaples
     pip install -e .
@@ -70,7 +70,7 @@ Notes: 'path_to_your_dir' is the path of the directory where you cloned this rep
 2. Move the downloaded files to the data folder and unzip them
     ```bash
     # navigate to the data folder
-    cd path_to_your_dir/Translation_transformer/my-translation-transformer/data
+    cd path_to_your_dir/PGPPT/my-translat-transformer/data
 
     # move the downloaded files to the data folder and unzip them
     unzip DOLS_Cylinder.zip
@@ -78,7 +78,7 @@ Notes: 'path_to_your_dir' is the path of the directory where you cloned this rep
     ```
 2. After unzipping the files, contents of the data folder should be
     ```
-    # path_to_your_dir/Translation_transformer/my-translation-transformer/data
+    # path_to_your_dir/PGPPT/my-translat-transformer/data
     .
     ├── DOLS_Cylinder/
     ├── GPT_dset_DG3/
@@ -89,7 +89,7 @@ Notes: 'path_to_your_dir' is the path of the directory where you cloned this rep
 1. To train the model
     ```bash
     # Navigate to src folder
-    cd path_to_your_dir/Translation_transformer/my-translation-transformer/src
+    cd path_to_your_dir/PGPPT/my-translat-transformer/src
 
     # For Flow past cylindrical island scenario:
     python main.py --mode train --CFG v5_DOLS --quick_run False
@@ -101,9 +101,9 @@ Notes: 'path_to_your_dir' is the path of the directory where you cloned this rep
     Training config files for the two scenarios are located in the cfg folder.
     Experiment hyperparameters can be set there.
     ```
-    path_to_your_dir/Translation_transformer/my-translat-transformer/cfg/contGrid_v5_DOLS.yaml
+    path_to_your_dir/PGPPT/my-translat-transformer/cfg/contGrid_v5_DOLS.yaml
 
-    path_to_your_dir/Translation_transformer/my-translat-transformer/cfg/contGrid_v5_GPT_DG3.yaml
+    path_to_your_dir/PGPPT/my-translat-transformer/cfg/contGrid_v5_GPT_DG3.yaml
     ```
     
     Notes:
@@ -112,7 +112,7 @@ Notes: 'path_to_your_dir' is the path of the directory where you cloned this rep
     - Each experiment is automatically named in the format "my_translat_{scenario}\_model\_{date_time}"
     - Results will be saved in the log folder:
         ```bash
-        path_to_your_dir/Translation_transformer/my-translat-transformer/log
+        path_to_your_dir/PGPPT/my-translat-transformer/log
         ```
     - The log folder will contain 3 files for each experiment:
         - my_translat_{scenario}\_model\_{date_time}_src_stats.npy 
