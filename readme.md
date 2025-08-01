@@ -20,7 +20,7 @@ The project was run using Python 3.11, CUDA Version 12.2, torch 2.1.2
 ### Clone the project and install packages
 ```bash
 # Clone the repository
-git clone -b clean_demo https://github.com/rohit1607/Translation_transformer.git
+git clone https://github.com/rohit1607/Physics-Guided-Path-Planning-Transformer.git
 
 # Navigate to the project directory
 cd Translation_transformer
