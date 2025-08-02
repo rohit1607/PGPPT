@@ -9,6 +9,8 @@ This repository contains the code for Physics Guided Path Planning Transformer (
 - [Installation](#installation)
 - [Usage](#usage)
 - [Notes](#Notes)
+- [Support and Contributions](#support-and-contributions)
+
 
 ## Introduction
 
@@ -84,6 +86,23 @@ Notes: 'path_to_your_dir' is the path of the directory where you cloned this rep
     ├── GPT_dset_DG3/
     ```
 
+### Modify torch.nn.module.transformer to vizualize attention scores
+To extract attention weights, torch.nn.modules.transformer was modified.
+If you want to use visualize attention scores in this project, then you have to replace the library code with the one we have provided in src/customized_torch_nn_transformer.py
+1. Open the following file:
+    ```
+    path_to_your_dir/PGPPT/my-translat-transformer/src/customized_torch_nn_transformer.py
+    ```
+2. Copy its contents. Ctrl+A, Ctrl+C
+3. Open the torch.nn's transformer module by navigating to
+    ```
+    path_to_your_dir/PGPPT/my_venv/lib/python3.11/site-packages/torch/nn/modules/transformer.py
+    ```
+    and delete its contents. Ctrl+A, Del
+4. Paste the copied contents here. Crtl+V
+
+Note:
+- The modifications made to torch's transformer code can be seen by searching for the keyword EDIT in the customized version.
 
 ## Usage
 1. To train the model
@@ -150,8 +169,10 @@ Notes: 'path_to_your_dir' is the path of the directory where you cloned this rep
 
 5. Data should be downloaded, unzipped and kept inside the data folder
 
-1. In main.py, attention visualization blocks and snippets have been commented out for now. The vizualization was implemented through modifications in torch.nn Transformers module and was unfortunately not tracked with git. We will soon re-implement and upload our customized-Transformers module that can be used instead.
-
 2. Users will require to create and login to their wandb account. This is required
 for logging experiment metrics.
 
+
+## Support and Contributions
+
+If you encounter any issues or have questions, please feel free to [raise an issue](https://github.com/rohit1607/PGPPT/issues) on GitHub. Contributions, suggestions, and feedback are always welcome to help improve this project.

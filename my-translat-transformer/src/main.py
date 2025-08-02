@@ -30,7 +30,8 @@ ImageFile.LOAD_TRUNCATED_IMAGES = True
 
 wandb.login()
 OLD_ROOT = "/home/rohit/Documents/Research/Planning_with_transformers/Translation_transformer/my-translat-transformer"
-
+# global ATTN_VIZ_FIXED
+ATTN_VIZ_FIXED = False
 
 
 def setup_env(flow_dir, old_root):
@@ -44,15 +45,15 @@ def setup_env(flow_dir, old_root):
     return env
 
 def extract_attention_scores(model):
-    enc_sa_arr = np.array([layer.enc_avg_att_scores.cpu().detach().numpy() for layer in model.transformer.encoder.layers])
-    dec_sa_arr = np.array([layer.dec_avg_att_scores.cpu().detach().numpy() for layer in model.transformer.decoder.layers])
-    dec_ga_arr = np.array([layer.dec_avg_cross_att_scores.cpu().detach().numpy() for layer in model.transformer.decoder.layers])
+    enc_sa_arr = np.array([layer.enc_att_scores.cpu().detach().numpy() for layer in model.transformer.encoder.layers])
+    dec_sa_arr = np.array([layer.dec_att_scores.cpu().detach().numpy() for layer in model.transformer.decoder.layers])
+    dec_ga_arr = np.array([layer.dec_cross_att_scores.cpu().detach().numpy() for layer in model.transformer.decoder.layers])
 
-    return enc_sa_arr , dec_sa_arr, dec_ga_arr 
+    return enc_sa_arr, dec_sa_arr, dec_ga_arr 
 
 def plot_all_attention_mats(all_att_mats, log_wandb=True, model_name=''):
     enc_sa_arr , dec_sa_arr, dec_ga_arr = all_att_mats
-    save_path = "/home/rohit/Documents/Research/Planning_with_transformers/Translation_transformer/my-translat-transformer/tmp/last_exp_figs"
+    save_path = join(ROOT,"tmp/last_exp_figs")
 
     plot_attention_weights(enc_sa_arr, 
                             layer_idx=0,
@@ -87,7 +88,6 @@ def plot_all_attention_mats(all_att_mats, log_wandb=True, model_name=''):
                             info_string = 'dec_ga',
                             wandb_fname = 'dec_ga'                 
                             )
-    
     return 
 
 def train_epoch(model, optimizer, tr_set, cfg, args, scheduler=None, log_interval=50):
@@ -153,12 +153,15 @@ def train_epoch(model, optimizer, tr_set, cfg, args, scheduler=None, log_interva
                        })
         count += 1
 
-    # Note: attention extraction was done by modificatin in the library. 
-    # all_att_mats = extract_attention_scores(model)
-    all_att_mats = None
+    # Note: attention scores are extracted only if torch.nn.module.transformer has been modified
+    global ATTN_VIZ_FIXED
+    if hasattr(model.transformer.decoder.layers[0],"dec_att_scores") and not ATTN_VIZ_FIXED:
+        ATTN_VIZ_FIXED = True
+        
+    all_att_mats = extract_attention_scores(model) if ATTN_VIZ_FIXED else None
     return avg_loss, all_att_mats
 
-
+# 
 def evaluate(model, val_set, cfg, log_interval=10):
     model.eval()
     # losses = 0
@@ -202,9 +205,8 @@ def evaluate(model, val_set, cfg, log_interval=10):
             wandb.log({f"in_eval/avg_val_loss vs log_intervalth update": avg_loss})
         count += 1
 
-    # NOTE: Uncomment post re-implementation or library-fix
-    # all_att_mats = extract_attention_scores(model)
-    all_att_mats = None
+    global ATTN_VIZ_FIXED
+    all_att_mats = extract_attention_scores(model) if ATTN_VIZ_FIXED else None
     return avg_loss, all_att_mats
 
 
@@ -285,7 +287,9 @@ def translate(model: torch.nn.Module, test_idx, test_set, tr_set_stats, cfg, ear
             # op_traj_dict['attention_weights'] = attention_weights
             op_traj_dict['success'] = reached_target
             op_traj_dict['mse'] = mse
-            # op_traj_dict['all_att_mat'] = extract_attention_scores(model)
+            global ATTN_VIZ_FIXED
+            if ATTN_VIZ_FIXED:
+                op_traj_dict['all_att_mat'] = extract_attention_scores(model)
             # op_traj_dict['states_for_action_labels'] = np.array(TXY_PREDS_)
             op_traj_dict['states_for_action_labels'] = None
             op_traj_dict['action_labels'] = tgt.cpu()*2*np.pi
@@ -613,7 +617,7 @@ def train_model(args=None, cfg_name=None):
     print(f"\n\n ---- running inference on test set ----- \n\n")
     transformer = torch.load(save_model_path)
     try:
-        op_traj_dict_list, results  = translate(transformer,test_idx_set, test_set, 
+        op_traj_dict_list, results = translate(transformer,test_idx_set, test_set, 
                                                 None, cfg, earlybreak=tt_eb[2])
         test_set_txy_preds = [d['states'] for d in op_traj_dict_list]
         path_lens = [d['n_tsteps'] for d in op_traj_dict_list]  
@@ -743,7 +747,9 @@ def inference_on_ckpt(args):
 
     test_set_txy_preds = [d['states'] for d in op_traj_dict_list]
     path_lens = [d['n_tsteps'] for d in op_traj_dict_list]
-    # all_att_mat_list =  [d['all_att_mat'] for d in op_traj_dict_list]
+    all_att_mat_list = None
+    if 'all_att_mat' in op_traj_dict_list[0].keys():
+        all_att_mat_list =  [d['all_att_mat'] for d in op_traj_dict_list]
     success_list = [d['success'] for d in op_traj_dict_list]
     actions = [d['actions'] for d in op_traj_dict_list]
     
@@ -793,24 +799,28 @@ def inference_on_ckpt(args):
     # pp.plot_traj_by_att("a_a_attention")
     # pp.plot_traj_by_att("a_s_attention")
     
-    #  visualize_output(test_set_txy_preds, 
-    #                     path_lens,
-    #                     iter_i = 0, 
-    #                     stats=None, 
-    #                     env=env_4_viz, 
-    #                     log_wandb=False, 
-    #                     plot_policy=False,
-    #                     traj_idx=None,      #None=all, list of rzn_ids []
-    #                     show_scatter=False,
-    #                     at_time=None,
-    #                     color_by_time=True, #TODO: fix tdone issue in src_utils
-    #                     plot_flow=True,
-    #                     wandb_suffix="test_on_unseen",
-    #                     model_name=model_name+"_on_"+dataset_name)
+    visualize_output(test_set_txy_preds, 
+                        path_lens,
+                        iter_i = 0, 
+                        stats=None, 
+                        env=env_4_viz, 
+                        log_wandb=False, 
+                        plot_policy=False,
+                        traj_idx=None,      #None=all, list of rzn_ids []
+                        show_scatter=False,
+                        at_time=None,
+                        color_by_time=True, #TODO: fix tdone issue in src_utils
+                        plot_flow=True,
+                        wandb_suffix="test_on_unseen",
+                        model_name=model_name+"_on_"+dataset_name)
     
-    # plot_all_attention_mats(all_att_mat_list[0],
-    #                         log_wandb=False, 
-    #                         model_name=model_name+"_on_"+dataset_name)
+    if all_att_mat_list is not None:
+        plot_all_attention_mats(all_att_mat_list[0], # change idx of list for different timesteps
+                                log_wandb=False, 
+                                model_name=model_name+"_on_"+dataset_name)
+    
+
+    # Uncomment to visualize attention scores at different time steps
     # for t in [i*10 for i in range(1,11)]:
     #     viz_op_traj_with_attention(test_set_txy_preds,
     #                         all_att_mat_list, 
