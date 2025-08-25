@@ -240,7 +240,8 @@ if __name__ == "__main__":
         max_test_samples = 1000
         include_obs_diff = False
 
-        files = [25305,40625,43475,43475,45525,45565]
+        # files = [25305,40625,43475,43425,45525,45565]
+        files = [43475]
         base_path = '/home/sumanth/rohit/Translation_transformer/my-translat-transformer/data/GPT_dset_DG3/static_obs/GPTdset_DG3_g100x100x120_r5k_Obsv1_w5_1dataset_single_'
         unseen_dataset_path_list = [f"{base_path}{file}.pkl" for file in files]
     

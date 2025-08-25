@@ -1610,6 +1610,13 @@ def visualize_output(preds_list,
     # TODO: remove hardcode
     plt.xlim([0., 100.])
     plt.ylim([0., 100.])
+    # x ticks at interval of 25
+    xticks = np.arange(0,100+25,25)
+    yticks = xticks.copy()
+    ax.xaxis.set_ticks(xticks)
+    ax.yaxis.set_ticks(yticks)
+    ax.set_xticklabels(xticks)
+    ax.set_yticklabels(yticks)
     # plot target area and set limits
     if env != None:
         plt.xlim([0, env.xlim])

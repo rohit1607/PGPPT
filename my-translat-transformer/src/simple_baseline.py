@@ -110,19 +110,24 @@ def simulate_baseline_actions(test_idx, tr_idx, tr_set, test_set):
 
     # retrieve a* : optimal actions from the closest training sample
     closest_actions = tr_tgt
+    max_a_steps = tr_traj_len
 
     # Bookkeeping
     txy_preds = np.zeros((1, context_len+1, 3),dtype=np.float32,)
     txy_preds[0,0,:] = np.array([0,test_env.start_pos[0],test_env.start_pos[1]])
     a_corrections = []
     corrected_actions = []
-
+    velocities = []
     for i in range(context_len):
+        if i >= max_a_steps:
+            break
+         # execute a*
         a_star = closest_actions[i]*2*np.pi
         u_star, v_star = tr_env.get_velocity(test_env.state)
         u_new, v_new = test_env.get_velocity(test_env.state)
         u_cor = u_star - u_new
         v_cor = v_star - v_new
+        velocities.append(((u_star, v_star),(u_new, v_new)))
         a_corrections.append((u_cor, v_cor))
         test_env.set_a_correction((u_cor, v_cor))
         txy, reward ,done, info = test_env.step(a_star)
@@ -138,11 +143,16 @@ def simulate_baseline_actions(test_idx, tr_idx, tr_set, test_set):
     op_traj_dict['closest_actions'] = closest_actions.cpu()*2*np.pi
     op_traj_dict['actions_corrections'] = a_corrections
     op_traj_dict['corrected_actions'] = corrected_actions
+    op_traj_dict['velocities'] = velocities
     op_traj_dict['t_done'] = i+2
     op_traj_dict['n_tsteps'] = i+1
     op_traj_dict['success'] = reached_target
     op_traj_dict['closest_tr_sample_idx'] = tr_idx
     op_traj_dict['test_sample_idx'] = test_idx
+    op_traj_dict['has_reached_target'] = info['has_reached_target']
+    op_traj_dict['is_outbound'] = info['is_outbound']
+    op_traj_dict['is_hitting_obs'] = info['is_hitting_obs']
+
     return op_traj_dict, test_env
 
 def get_success_rate(results_list):
@@ -153,7 +163,24 @@ def get_avg_tdone(results_list):
     t_dones = [res['t_done'] for res in results_list if res['success']]
     return np.mean(t_dones)
 
-
+def get_stats(results_list):
+    n_success = sum([1 for res in results_list if res['success']])
+    n_outbound = sum([1 for res in results_list if res['is_outbound']])
+    n_hitting_obs = sum([1 for res in results_list if res['is_hitting_obs']])
+    avg_a_correction_list = [res['actions_corrections'][0] for res in results_list if len(res['actions_corrections'])>0]
+    n_total = len(results_list)
+    print( n_total, n_success + n_outbound + n_hitting_obs)
+    stats = {
+        "n_success": n_success,
+        "n_outbound": n_outbound,
+        "n_hitting_obs": n_hitting_obs,
+        "n_total": n_total,
+        "success_rate": n_success/n_total,
+        "outbound_rate": n_outbound/n_total,
+        "hitting_obs_rate": n_hitting_obs/n_total,
+        # "avg_a_correction_list": avg_a_correction_list,
+    }
+    return stats
 
 
 
@@ -214,7 +241,6 @@ def main(dataset_type, unseen_dataset_path, dataset_path, context_len,
         
         results, test_env = simulate_baseline_actions(test_sample_idx, min_idx_tr, tr_set, test_set)
         sim_end_time = time.time()
-    
         results_list.append(results)
 
         diff_time = (diff_end_time - start_time)
@@ -227,13 +253,14 @@ def main(dataset_type, unseen_dataset_path, dataset_path, context_len,
             # print(f"Avg. time for finding closest sample: {np.mean(diff_times_list)} sec")
             # print(f"Avg. time for simulating test sample: {np.mean(sim_times_list)} secs")
 
-    print(f"unseen dataset path: {unseen_dataset_path.split('/')[-1]}")
+    # print(f"unseen dataset path: {unseen_dataset_path.split('/')[-1]}")
     print(f"{use_tr_set_for_stats=}")
     print(f"{include_obs_diff=}")
     avg_success_rate = get_success_rate(results_list)
     avg_tdone = get_avg_tdone(results_list)
     print(f"Avg. Success Rate = {avg_success_rate*100:.2f}")
     print(f"Avg. T_done = {avg_tdone:.2f}")
+    print(get_stats(results_list))
     print()
     return results_list, test_env
 
@@ -251,17 +278,21 @@ if __name__ == "__main__":
         context_len = 101
         max_test_samples = 500
         include_obs_diff = False
+        # dummy value since not needed for DOLS
+        unseen_dataset_path_list = [None]
+        use_tr_set_for_stats = True
+        files = ["DOLS"]
 
     elif dataset_type == 'DG3':
         dataset_path = '/home/sumanth/rohit/Translation_transformer/my-translat-transformer/data/GPT_dset_DG3/static_obs/GPTdset_DG3_g100x100x120_r5k_Obsv1_w5_1dataset_v2.pkl'
         unseen_dataset_path = '/home/sumanth/rohit/Translation_transformer/my-translat-transformer/data/GPT_dset_DG3/static_obs/GPTdset_DG3_g100x100x120_r5k_Obsv1_w5_1dataset_single_43475.pkl'
         # unseen_dataset_path = '/home/sumanth/rohit/Translation_transformer/my-translat-transformer/data/GPT_dset_DG3/static_obs/GPTdset_DG3_g100x100x120_r5k_Obsv1_w5_1dataset_single_45565.pkl'
         context_len = 120
-        max_test_samples = 500
-        include_obs_diff = False
+        max_test_samples = 1000
+        include_obs_diff = True
         use_tr_set_for_stats = True
         # files = [25305,40625,43475,43475,45525,45565]
-        files = [43475]
+        files = [43475,45565,25305]
 
         base_path = '/home/sumanth/rohit/Translation_transformer/my-translat-transformer/data/GPT_dset_DG3/static_obs/GPTdset_DG3_g100x100x120_r5k_Obsv1_w5_1dataset_single_'
         unseen_dataset_path_list = [f"{base_path}{file}.pkl" for file in files]
@@ -276,6 +307,10 @@ if __name__ == "__main__":
                                      use_tr_set_for_stats=use_tr_set_for_stats)
 
         env_4_viz = test_env
+
+        save_dir = "/home/sumanth/rohit/Translation_transformer/my-translat-transformer/tmp"
+        torch.save(result_list, join(save_dir,f"corrected_simple_baseline_{files[idx]}_results.pt"))
+
         val_set_txy_preds = [d['states'] for d in result_list]
         path_lens = [d['n_tsteps'] for d in result_list]
         visualize_output(val_set_txy_preds, 
@@ -291,5 +326,6 @@ if __name__ == "__main__":
                             color_by_time=True, #TODO: fix tdone issue in src_utils
                             plot_flow=True,
                             wandb_suffix="val",
-                            model_name=f"simple_baseline_{files[idx]}_",
+                            model_name=f"corrected_simple_baseline_obsdiff_{include_obs_diff}_{files[idx]}_",
+                           
                             ) 

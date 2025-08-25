@@ -190,11 +190,17 @@ class ContGridWorld_v5(gym.Env):
         # action *= (2*np.pi/self.n_actions)
         u,v = self.get_velocity(self.state)
         cor_u, cor_v = self.a_correction
-        self.state[0] += 1
-        self.state[1] += float((self.F*math.cos(action) + cor_u + u)*self.del_t)
-        self.state[2] += float((self.F*math.sin(action) + cor_v + v)*self.del_t)
 
         self.corrected_angle = np.arctan2(self.F*math.sin(action) + cor_v , self.F*math.cos(action) + cor_u )
+        
+        # if (cor_u, cor_v) == (0,0):
+        #     assert self.corrected_angle == action, print("Error in corrected angle calculation")    
+
+        self.state[0] += 1
+        # self.state[1] += float((self.F*math.cos(action) + cor_u + u)*self.del_t)
+        # self.state[2] += float((self.F*math.sin(action) + cor_v + v)*self.del_t)
+        self.state[1] += float((self.F*math.cos(self.corrected_angle) + u)*self.del_t)
+        self.state[2] += float((self.F*math.sin(self.corrected_angle) + v)*self.del_t)
         # add noise
         # self.state += 0.05*np.random.randint(-3,4)
         if self.add_trans_noise:
@@ -253,7 +259,8 @@ class ContGridWorld_v5(gym.Env):
             self.reward = -self.xlim
             self.done = True
             self.state =  old_s
-        info = {"is_outbound": is_outbound, "has_reached_target":has_reached_target} # what do i put here
+        info = {"is_outbound": is_outbound, "has_reached_target":has_reached_target,
+                "is_hitting_obs":is_hitting_obs} # what do i put here
         return np.array(self.state), self.reward, self.done, info
 
 
