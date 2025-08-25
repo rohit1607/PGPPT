@@ -117,6 +117,7 @@ class ContGridWorld_v5(gym.Env):
         self.Umax, self.Vmax = np.max(self.U), np.max(self.V)
         self.Umean, self.Vmean = np.mean(np.abs(self.U)), np.mean(np.abs(self.V))
         self.sanity_checks()
+        self.a_correction = (0,0) # default no correction
         # print("="*20)
         # print("init: ",self.start_pos)
         # print(f"start_pos.shape={self.start_pos.shape}")
@@ -180,13 +181,20 @@ class ContGridWorld_v5(gym.Env):
         return u, v
 
 
+    def set_a_correction(self, a_correction):
+        self.a_correction = a_correction
+        return
+    
+
     def transition(self, action, add_noise=False):
         # action *= (2*np.pi/self.n_actions)
         u,v = self.get_velocity(self.state)
+        cor_u, cor_v = self.a_correction
         self.state[0] += 1
-        self.state[1] += float((self.F*math.cos(action) + u)*self.del_t)
-        self.state[2] += float((self.F*math.sin(action) + v)*self.del_t)
+        self.state[1] += float((self.F*math.cos(action) + cor_u + u)*self.del_t)
+        self.state[2] += float((self.F*math.sin(action) + cor_v + v)*self.del_t)
 
+        self.corrected_angle = np.arctan2(self.F*math.sin(action) + cor_v , self.F*math.cos(action) + cor_u )
         # add noise
         # self.state += 0.05*np.random.randint(-3,4)
         if self.add_trans_noise:

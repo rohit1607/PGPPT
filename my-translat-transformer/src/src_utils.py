@@ -1616,8 +1616,8 @@ def visualize_output(preds_list,
         plt.ylim([0, env.ylim])
         
         # print("****VERIFY: env.target_pos: ", env.target_pos)
-        obstacle = DOLS_obstacle()
-        ax.add_patch(obstacle)
+        # obstacle = DOLS_obstacle()
+        # ax.add_patch(obstacle)
         if env.target_pos.ndim == 1:
             target_circle = plt.Circle(env.target_pos, env.target_rad, color='r', alpha=0.3)
             ax.add_patch(target_circle)
